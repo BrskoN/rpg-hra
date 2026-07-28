@@ -161,8 +161,8 @@ private fun InteractiveCardItem(
 
     Box(
         modifier = Modifier
-            .width(112.dp)
-            .height(170.dp)
+            .width(118.dp)
+            .height(192.dp)
             .rotate(if (isDragging) 0f else fanRotation)
             .offset { IntOffset(dragX.value.roundToInt(), dragY.value.roundToInt()) }
             .scale(cardScale)
@@ -219,7 +219,7 @@ private fun InteractiveCardItem(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(165.dp)
+                .height(188.dp)
                 .shadow(if (isDragging) 14.dp else 6.dp, RoundedCornerShape(14.dp))
                 .border(2.dp, cardDesign.borderColor, RoundedCornerShape(14.dp))
                 .testTag(testTagStr),
@@ -261,35 +261,51 @@ private fun InteractiveCardItem(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(3.dp))
+                Spacer(modifier = Modifier.height(2.dp))
 
                 IlluminatedInitial(
                     letter = cardInitial,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
-                    fontSize = 24.sp,
+                        .fillMaxWidth(0.9f)
+                        .height(26.dp),
+                    fontSize = 15.sp,
                     textColor = cardDesign.initialColor,
                     borderColor = cardDesign.borderColor,
                     backgroundColor = DeepCharcoal
                 )
 
-                Spacer(modifier = Modifier.height(3.dp))
+                Spacer(modifier = Modifier.height(2.dp))
 
-                Text(
-                    text = option.text,
-                    fontSize = 11.sp,
-                    lineHeight = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Serif,
-                    color = if (isEnabled) DarkInk else Color(0xFF6A6054),
-                    textAlign = TextAlign.Center,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
+                val textLen = option.text.length
+                val computedFontSize = when {
+                    textLen > 45 -> 10.sp
+                    textLen > 30 -> 10.5.sp
+                    else -> 11.5.sp
+                }
+                val computedLineHeight = when {
+                    textLen > 45 -> 12.5.sp
+                    textLen > 30 -> 13.5.sp
+                    else -> 14.5.sp
+                }
+
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
-                )
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = option.text,
+                        fontSize = computedFontSize,
+                        lineHeight = computedLineHeight,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Serif,
+                        color = if (isEnabled) DarkInk else Color(0xFF6A6054),
+                        textAlign = TextAlign.Center,
+                        maxLines = 5,
+                        overflow = TextOverflow.Clip
+                    )
+                }
             }
         }
     }

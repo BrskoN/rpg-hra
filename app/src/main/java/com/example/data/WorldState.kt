@@ -230,7 +230,8 @@ data class WorldState(
     val recentCharactersMet: List<String> = emptyList(),
     val lastActionConsequenceSummary: String = "",
     val currentActiveSceneContext: String? = null,
-    val currentActiveNpc: String? = null
+    val currentActiveNpc: String? = null,
+    val activeSceneTurns: Int = 0
 )
 
 fun OriginClass.getLocalizedTitle(lang: AppLanguage): String = when (lang) {

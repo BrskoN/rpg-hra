@@ -174,6 +174,7 @@ fun GameScreen(
                     storyText = currentEvent?.text,
                     turnCount = worldState.turnCount,
                     isLoading = isLoading,
+                    selectedLanguage = worldState.selectedLanguage,
                     modifier = Modifier.fillMaxWidth()
                 )
             }

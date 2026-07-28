@@ -184,9 +184,28 @@ class GameViewModel @JvmOverloads constructor(
             var gameOver = false
             var gameOverReason: String? = null
 
+            val isSlovak = currentWorld.selectedLanguage == AppLanguage.SLOVAK
+
             if (newHealth <= 0) {
                 gameOver = true
-                gameOverReason = "Your journey ended prematurely after succumbing to fatal injuries."
+                gameOverReason = if (isSlovak)
+                    "Podľahli ste smrteľným zraneniam. Vaša cesta kráľovstvom sa predčasne skončila."
+                else "Your journey ended prematurely after succumbing to fatal injuries."
+            } else if (newNotoriety >= 100) {
+                gameOver = true
+                gameOverReason = if (isSlovak)
+                    "Kráľovskí katia a lovci odmien vás dostihli. Boli ste verejne popravený pred zrakmi ľudu."
+                else "Royal inquisitors and bounty hunters hunted you down. You were publicly executed."
+            } else if (newTension >= 100) {
+                gameOver = true
+                gameOverReason = if (isSlovak)
+                    "Kráľovstvo sa vzbúrilo v celkovej vojne a chaose. Nemáte viac kde bezpečne nájsť azyl."
+                else "The realm exploded into total war and anarchy. Nowhere remains safe."
+            } else if (newGold <= 0 && currentWorld.gold <= 0 && currentWorld.turnCount >= 4) {
+                gameOver = true
+                gameOverReason = if (isSlovak)
+                    "Úplne ste skrachovali a dlžobný žalár pre vás zhasol poslednú nádej na prežitie."
+                else "You were completely bankrupted and locked away in debtor's prison."
             }
 
             val resolutionReaction = nextResponse.resolutionText.ifBlank {
@@ -199,8 +218,19 @@ class GameViewModel @JvmOverloads constructor(
             val updatedCharactersMet = (currentWorld.recentCharactersMet + nextResponse.npcName).takeLast(2)
             val consequenceSummary = resolutionReaction
 
-            val newActiveSceneContext = nextResponse.updatedActiveSceneContext?.takeIf { it.isNotBlank() && it != "null" }
-            val newActiveNpc = nextResponse.updatedActiveNpc?.takeIf { it.isNotBlank() && it != "null" } ?: if (newActiveSceneContext != null) nextResponse.npcName else null
+            // Manage active scene duration: allowed up to 3 turns max before automatic unlock
+            val rawSceneContext = nextResponse.updatedActiveSceneContext?.takeIf { it.isNotBlank() && it != "null" }
+            val currentSceneTurns = if (currentWorld.currentActiveSceneContext != null) currentWorld.activeSceneTurns + 1 else 1
+
+            val (newActiveSceneContext, newActiveNpc, newSceneTurns) = when {
+                rawSceneContext == null -> Triple<String?, String?, Int>(null, null, 0)
+                currentSceneTurns >= 3 -> Triple<String?, String?, Int>(null, null, 0) // Max 3 turns limit reached - force unlock scene!
+                else -> Triple<String?, String?, Int>(
+                    rawSceneContext,
+                    nextResponse.updatedActiveNpc?.takeIf { it.isNotBlank() && it != "null" } ?: nextResponse.npcName,
+                    currentSceneTurns
+                )
+            }
 
             val updatedWorld = currentWorld.copy(
                 gold = newGold,
@@ -218,7 +248,8 @@ class GameViewModel @JvmOverloads constructor(
                 recentCharactersMet = updatedCharactersMet,
                 lastActionConsequenceSummary = consequenceSummary,
                 currentActiveSceneContext = newActiveSceneContext,
-                currentActiveNpc = newActiveNpc
+                currentActiveNpc = newActiveNpc,
+                activeSceneTurns = newSceneTurns
             )
 
             _worldState.value = updatedWorld
@@ -234,7 +265,10 @@ class GameViewModel @JvmOverloads constructor(
     }
 
     fun acceptFate() {
-        if (_worldState.value.isGameOver) return
+        if (_worldState.value.isGameOver) {
+            _turnPhase.value = TurnPhase.ACTION_SELECTION
+            return
+        }
         // Automatically save at the end of RESOLUTION phase
         persistStateToRoom(_worldState.value)
         // Transition to Phase 3: NARRATIVE_BRIDGE
@@ -262,7 +296,9 @@ class GameViewModel @JvmOverloads constructor(
             _turnPhase.value = TurnPhase.CHAPTER_ASCENSION
         } else {
             _turnPhase.value = TurnPhase.ACTION_SELECTION
-            loadNextScenario(updatedWorld, currentWorld.lastChosenOptionText, anchorContext)
+            if (_currentEvent.value == null) {
+                loadNextScenario(updatedWorld, currentWorld.lastChosenOptionText, anchorContext)
+            }
         }
     }
 

@@ -17,27 +17,6 @@ class GameRepository(private val geminiApiService: GeminiApiService = GeminiApiS
         return generateOfflineEvent(worldState, chosenOptionText, anchorContext)
     }
 
-    suspend fun getNextEvent(
-        currentState: GameState,
-        chosenOptionText: String?
-    ): EventResponse {
-        val mappedFactions = mutableMapOf<Faction, Int>()
-        currentState.factionReputation.forEach { (name, rep) ->
-            val matching = Faction.values().find { it.displayName.equals(name, ignoreCase = true) } ?: Faction.PEASANTS
-            mappedFactions[matching] = rep
-        }
-        val convertedWorld = WorldState(
-            currentChapter = 1,
-            gold = currentState.gold,
-            health = currentState.health,
-            maxHealth = currentState.maxHealth,
-            factions = mappedFactions,
-            worldFlags = currentState.flags.toSet(),
-            turnCount = currentState.turnCount
-        )
-        return getNextEvent(convertedWorld, chosenOptionText)
-    }
-
     private fun generateOfflineEvent(
         worldState: WorldState,
         chosenOptionText: String?,
@@ -193,127 +172,155 @@ class GameRepository(private val geminiApiService: GeminiApiService = GeminiApiS
 
         val turn = worldState.turnCount
 
+        // If an active scene is locked, generate a continuous response for that active scene
+        if (!worldState.currentActiveSceneContext.isNullOrBlank() && !worldState.currentActiveNpc.isNullOrBlank()) {
+            val npcName = worldState.currentActiveNpc
+            val action = chosenOptionText ?: "Continuing"
+            return EventResponse(
+                resolutionText = if (isSlovak) "Reakcia na '$action': $npcName sleduje vaše konanie a napäto reaguje v probiehajúcom stretnutí." else "In response to '$action': $npcName observes your maneuver carefully as the confrontation intensifies.",
+                bridgeText = if (isSlovak) "Situácia sa vyhrocuje. Každá sekunda v tejto konfrontácii rozhoduje o živote a smrti." else "The immediate tension reaches a boiling point. Every second in this confrontation matters.",
+                nextEventTitle = if (isSlovak) "Vyhrotenie: $npcName" else "Confrontation: $npcName",
+                nextEventText = if (isSlovak) "Konfrontácia s $npcName pokračuje. $npcName odmieta ustúpiť a čaká na váš ďalší krok." else "The ongoing encounter with $npcName continues. $npcName stands firm and demands your next decisive action.",
+                location = "Village",
+                npcName = npcName,
+                npcTitle = if (isSlovak) "Aktívny Protivník" else "Active Adversary",
+                npcArchetype = "KNIGHT",
+                statChanges = StatChanges(goldChange = -5, healthChange = -5, regionalTensionChange = 5, notorietyChange = 5, factionChanges = mapOf("Peasants" to 5)),
+                newWorldFlags = listOf("ONGOING_CONFLICT"),
+                updatedActiveSceneContext = null, // Resolve scene on follow up
+                updatedActiveNpc = null,
+                options = if (isSlovak) listOf(
+                    EventOption(1, "Pokúsiť sa o ústup", "Útek", "Peasant_Action"),
+                    EventOption(2, "Trvať na svojich podmienkach", "Boj", "Noble_Action"),
+                    EventOption(3, "Ponúknuť zlato a mier", "Ťažká Mošna", "Merchant_Action")
+                ) else listOf(
+                    EventOption(1, "Attempt swift retreat", "Escape", "Peasant_Action"),
+                    EventOption(2, "Press terms and draw steel", "Combat", "Noble_Action"),
+                    EventOption(3, "Offer gold to settle", "Heavy Purse", "Merchant_Action")
+                )
+            )
+        }
+
         val templates = if (isSlovak) listOf(
             OfflineTemplate(
                 title = "Katedrálny Desiatok",
                 text = "Biskup Alistair prehovoril k zhromaždeniu pred pozláteným oltárom a žiada príspevky na obnovu panského chrámu.",
-                location = "Cathedral",
-                npcName = "Biskup Alistair",
-                npcTitle = "Vysoký Prelát Svätej Stolice",
-                npcArchetype = "BISHOP",
-                goldChange = -10, healthChange = 0, statusEffect = "Sväté Požehnanie",
-                factionMap = mapOf("Church" to 15, "Peasants" to 5),
-                flag = "CHURCH_SPONSORSHIP",
-                opt1 = "Darovať mince za relikviu svätca", tag1 = "Cirkevná Priazeň", archetype1 = "Church_Action",
-                opt2 = "Navrhnúť stavebnú zmluvu na obnovu", tag2 = "Zmluva", archetype2 = "Merchant_Action",
-                opt3 = "Požiadať o pokorný azyl pre pútnikov", tag3 = "Pokorná Prosba", archetype3 = "Church_Action"
+                location = "Cathedral", npcName = "Biskup Alistair", npcTitle = "Vysoký Prelát Svätej Stolice", npcArchetype = "BISHOP",
+                goldChange = -10, healthChange = 0, statusEffect = "Sväté Požehnanie", factionMap = mapOf("Church" to 15, "Peasants" to 5), flag = "CHURCH_SPONSORSHIP",
+                opt1 = "Darovať mince za relikviu", tag1 = "Cirkev", archetype1 = "Church_Action",
+                opt2 = "Navrhnúť stavebnú zmluvu", tag2 = "Zmluva", archetype2 = "Merchant_Action",
+                opt3 = "Požiadať o azyl pútnikov", tag3 = "Azyl", archetype3 = "Church_Action"
             ),
             OfflineTemplate(
                 title = "Prepad Zbojníckeho Tábora",
                 text = "Kapitán Vane so svojimi zbojníkmi prepadol vašu družinu v Šeptajúcich lesoch a žiada výkupné alebo súboj.",
-                location = "Forest",
-                npcName = "Kapitán Vane",
-                npcTitle = "Zbojnícky Vodca",
-                npcArchetype = "BANDIT",
-                goldChange = -15, healthChange = -10, statusEffect = "Bojom Zocelený",
-                factionMap = mapOf("Underworld" to 15, "Nobility" to -10),
-                flag = "KILLED_BAILIFF",
-                opt1 = "Vytiahnuť oceľ a vyzvať vodcu na súboj", tag1 = "Boj", archetype1 = "Noble_Action",
-                opt2 = "Hodiť ťažkú mošnu pre voľný prechod", tag2 = "Ťažká Mošna", archetype2 = "Merchant_Action",
-                opt3 = "Navrhnúť tajný pakt s cechom tieňov", tag3 = "Dohoda v Tieni", archetype3 = "Underworld_Action"
+                location = "Forest", npcName = "Kapitán Vane", npcTitle = "Zbojnícky Vodca", npcArchetype = "BANDIT",
+                goldChange = -15, healthChange = -10, statusEffect = "Bojom Zocelený", factionMap = mapOf("Underworld" to 15, "Nobility" to -10), flag = "BANDIT_PACT",
+                opt1 = "Vyzvať vodcu na súboj", tag1 = "Boj", archetype1 = "Noble_Action",
+                opt2 = "Hodiť ťažkú mošnu zlata", tag2 = "Výkupné", archetype2 = "Merchant_Action",
+                opt3 = "Navrhnúť tajný pakt tieňov", tag3 = "Dohoda", archetype3 = "Underworld_Action"
             ),
             OfflineTemplate(
                 title = "Trh Cechových Kupcov",
                 text = "Cechmajster Corvus kontroluje dovoz drahého hodvábu a láka bohatých patrónov na investície do karaván.",
-                location = "Marketplace",
-                npcName = "Cechmajster Corvus",
-                npcTitle = "Hodvábny Cechmajster",
-                npcArchetype = "MERCHANT",
-                goldChange = 35, healthChange = 0, statusEffect = "Patrón Cechu",
-                factionMap = mapOf("Guilds" to 20, "Peasants" to 5),
-                flag = "GUILD_MASTER",
-                opt1 = "Sformulovať obchodnú zmluvu pre podiely", tag1 = "Zmluva", archetype1 = "Merchant_Action",
-                opt2 = "Podplatiť úradníka za vyhotovenie licencie", tag2 = "Ťažká Mošna", archetype2 = "Merchant_Action",
-                opt3 = "Pomôcť s vykládkou debien korenia za mzdu", tag3 = "Práca", archetype3 = "Peasant_Action"
+                location = "Marketplace", npcName = "Cechmajster Corvus", npcTitle = "Hodvábny Cechmajster", npcArchetype = "MERCHANT",
+                goldChange = 35, healthChange = 0, statusEffect = "Patrón Cechu", factionMap = mapOf("Guilds" to 20, "Peasants" to 5), flag = "GUILD_MASTER",
+                opt1 = "Sformulovať obchodnú zmluvu", tag1 = "Zmluva", archetype1 = "Merchant_Action",
+                opt2 = "Podplatiť úradníka za licenciu", tag2 = "Úplatok", archetype2 = "Merchant_Action",
+                opt3 = "Pomôcť s vykládkou debien", tag3 = "Práca", archetype3 = "Peasant_Action"
             ),
             OfflineTemplate(
                 title = "Inšpekcia Panského Sídla",
                 text = "Lord Reginald obchádza feudálne panstvo a žiada verných rytierov na presadzovanie kráľovského poriadku.",
-                location = "Castle",
-                npcName = "Lord Reginald",
-                npcTitle = "Feudálny Správca",
-                npcArchetype = "NOBLE",
-                goldChange = 40, healthChange = 0, statusEffect = "Šľachtická Priazeň",
-                factionMap = mapOf("Nobility" to 20, "Church" to 5),
-                flag = "CROWN_FAVOR",
-                opt1 = "Zložiť rytiersku prísahu a ukázať pečať", tag1 = "Kráľovská Pečať", archetype1 = "Noble_Action",
-                opt2 = "Vyzvať panského šampióna na rytiersky súboj", tag2 = "Výzva", archetype2 = "Noble_Action",
-                opt3 = "Predložiť zmluvu na dodávku železnej rudy", tag3 = "Zmluva", archetype3 = "Merchant_Action"
+                location = "Castle", npcName = "Lord Reginald", npcTitle = "Feudálny Správca", npcArchetype = "NOBLE",
+                goldChange = 40, healthChange = 0, statusEffect = "Šľachtická Priazeň", factionMap = mapOf("Nobility" to 20, "Church" to 5), flag = "CROWN_FAVOR",
+                opt1 = "Zložiť rytiersku prísahu", tag1 = "Prísaha", archetype1 = "Noble_Action",
+                opt2 = "Vyzvať panského šampióna", tag2 = "Súboj", archetype2 = "Noble_Action",
+                opt3 = "Predložiť zmluvu na rudu", tag3 = "Zmluva", archetype3 = "Merchant_Action"
+            ),
+            OfflineTemplate(
+                title = "Tajný Apenínsky Trh",
+                text = "Bylinkárka Isolde ponúka zriedkavé liečivé elixíry z horských bylín a hľadá dôveryhodného pomocníka.",
+                location = "Village", npcName = "Isolde Liečiteľka", npcTitle = "Horská Alchymistka", npcArchetype = "ALCHEMIST",
+                goldChange = -20, healthChange = 25, statusEffect = "Elixír Života", factionMap = mapOf("Peasants" to 15, "Guilds" to 5), flag = "HERBAL_ALLIANCE",
+                opt1 = "Kúpiť mastičku proti moru", tag1 = "Liek", archetype1 = "Peasant_Action",
+                opt2 = "Ponúknuť zber vzácnych korienkov", tag2 = "Zber", archetype2 = "Peasant_Action",
+                opt3 = "Odkúpiť recept pre lekárnikov", tag3 = "Recept", archetype3 = "Merchant_Action"
+            ),
+            OfflineTemplate(
+                title = "Strážna Veža na Hranici",
+                text = "Rytier Sir Roderick hliadkuje pri rozpadnutej veži a podozrieva každého pocestného zo špionáže.",
+                location = "Castle", npcName = "Sir Roderick", npcTitle = "Hradný Kapitán", npcArchetype = "KNIGHT",
+                goldChange = -5, healthChange = -5, statusEffect = "Vojenská Prísnosť", factionMap = mapOf("Nobility" to 10, "Peasants" to -5), flag = "BORDER_GUARD",
+                opt1 = "Ukázať panskú priepustku", tag1 = "Pečať", archetype1 = "Noble_Action",
+                opt2 = "Ponúknuť striebro za bránu", tag2 = "Minca", archetype2 = "Merchant_Action",
+                opt3 = "Vytiahnuť meč a bojovať", tag3 = "Boj", archetype3 = "Noble_Action"
             )
         ) else listOf(
             OfflineTemplate(
                 title = "The Holy Cathedral Tithe",
                 text = "Bishop Alistair addresses the congregation from the gilded altar, demanding contributions for church restoration.",
-                location = "Cathedral",
-                npcName = "Bishop Alistair",
-                npcTitle = "High Prelate of the Holy See",
-                npcArchetype = "BISHOP",
-                goldChange = -10, healthChange = 0, statusEffect = "Pious Blessing",
-                factionMap = mapOf("Church" to 15, "Peasants" to 5),
-                flag = "CHURCH_SPONSORSHIP",
-                opt1 = "Donate coins to receive Saint's Relic", tag1 = "Church Favor", archetype1 = "Church_Action",
-                opt2 = "Propose church building trade contract", tag2 = "Contract", archetype2 = "Merchant_Action",
-                opt3 = "Request humble sanctuary for pilgrims", tag3 = "Humble Plea", archetype3 = "Church_Action"
+                location = "Cathedral", npcName = "Bishop Alistair", npcTitle = "High Prelate of the Holy See", npcArchetype = "BISHOP",
+                goldChange = -10, healthChange = 0, statusEffect = "Pious Blessing", factionMap = mapOf("Church" to 15, "Peasants" to 5), flag = "CHURCH_SPONSORSHIP",
+                opt1 = "Donate coins for relic", tag1 = "Church", archetype1 = "Church_Action",
+                opt2 = "Propose restoration contract", tag2 = "Contract", archetype2 = "Merchant_Action",
+                opt3 = "Request sanctuary for pilgrims", tag3 = "Sanctuary", archetype3 = "Church_Action"
             ),
             OfflineTemplate(
                 title = "Bandit Outpost Raid",
                 text = "Captain Vane and his outlaws ambush your party in the Whispering Woods, demanding tribute or a duel.",
-                location = "Forest",
-                npcName = "Captain Vane",
-                npcTitle = "Outlaw Highwayman",
-                npcArchetype = "BANDIT",
-                goldChange = -15, healthChange = -10, statusEffect = "Battle Tested",
-                factionMap = mapOf("Underworld" to 15, "Nobility" to -10),
-                flag = "KILLED_BAILIFF",
-                opt1 = "Draw steel and challenge outlaw leader", tag1 = "Combat", archetype1 = "Noble_Action",
-                opt2 = "Toss heavy purse to buy passage", tag2 = "Heavy Purse", archetype2 = "Merchant_Action",
-                opt3 = "Propose secret pact with shadowy guild", tag3 = "Shadow Pact", archetype3 = "Underworld_Action"
+                location = "Forest", npcName = "Captain Vane", npcTitle = "Outlaw Highwayman", npcArchetype = "BANDIT",
+                goldChange = -15, healthChange = -10, statusEffect = "Battle Tested", factionMap = mapOf("Underworld" to 15, "Nobility" to -10), flag = "BANDIT_PACT",
+                opt1 = "Challenge outlaw leader", tag1 = "Combat", archetype1 = "Noble_Action",
+                opt2 = "Toss heavy purse for passage", tag2 = "Purse", archetype2 = "Merchant_Action",
+                opt3 = "Propose pact with guild", tag3 = "Pact", archetype3 = "Underworld_Action"
             ),
             OfflineTemplate(
                 title = "Merchant Guild Bazaar",
                 text = "Guildmaster Corvus inspects silk imports and invites wealthy patrons to invest in trade caravans.",
-                location = "Marketplace",
-                npcName = "Guildmaster Corvus",
-                npcTitle = "Silk Guildhead",
-                npcArchetype = "MERCHANT",
-                goldChange = 35, healthChange = 0, statusEffect = "Guild Patron",
-                factionMap = mapOf("Guilds" to 20, "Peasants" to 5),
-                flag = "GUILD_MASTER",
-                opt1 = "Draft trade contract for caravan shares", tag1 = "Contract", archetype1 = "Merchant_Action",
-                opt2 = "Bribe official with gold for license", tag2 = "Heavy Purse", archetype2 = "Merchant_Action",
-                opt3 = "Lend peasant labor to unload spice crates", tag3 = "Grain Bribe", archetype3 = "Peasant_Action"
+                location = "Marketplace", npcName = "Guildmaster Corvus", npcTitle = "Silk Guildhead", npcArchetype = "MERCHANT",
+                goldChange = 35, healthChange = 0, statusEffect = "Guild Patron", factionMap = mapOf("Guilds" to 20, "Peasants" to 5), flag = "GUILD_MASTER",
+                opt1 = "Draft trade caravan contract", tag1 = "Contract", archetype1 = "Merchant_Action",
+                opt2 = "Bribe official for license", tag2 = "Bribe", archetype2 = "Merchant_Action",
+                opt3 = "Help unload spice crates", tag3 = "Work", archetype3 = "Peasant_Action"
             ),
             OfflineTemplate(
                 title = "Manor Fief Inspection",
                 text = "Lord Reginald surveys the feudal manor and demands loyal knights or magistrates to enforce royal order.",
-                location = "Castle",
-                npcName = "Lord Reginald",
-                npcTitle = "Feudal Estate Governor",
-                npcArchetype = "NOBLE",
-                goldChange = 40, healthChange = 0, statusEffect = "Noble Favor",
-                factionMap = mapOf("Nobility" to 20, "Church" to 5),
-                flag = "CROWN_FAVOR",
-                opt1 = "Pledge knight's oath and present seal", tag1 = "Royal Seal", archetype1 = "Noble_Action",
-                opt2 = "Challenge manor champion to duel", tag2 = "Challenge", archetype2 = "Noble_Action",
-                opt3 = "Present trade contract for iron ore", tag3 = "Contract", archetype3 = "Merchant_Action"
+                location = "Castle", npcName = "Lord Reginald", npcTitle = "Feudal Estate Governor", npcArchetype = "NOBLE",
+                goldChange = 40, healthChange = 0, statusEffect = "Noble Favor", factionMap = mapOf("Nobility" to 20, "Church" to 5), flag = "CROWN_FAVOR",
+                opt1 = "Pledge knight's oath and seal", tag1 = "Oath", archetype1 = "Noble_Action",
+                opt2 = "Challenge champion to duel", tag2 = "Duel", archetype2 = "Noble_Action",
+                opt3 = "Present iron ore contract", tag3 = "Contract", archetype3 = "Merchant_Action"
+            ),
+            OfflineTemplate(
+                title = "Herbalist's Mountain Market",
+                text = "Isolde the Healer offers rare mountain remedies and seeks a trustworthy runner for dangerous herbs.",
+                location = "Village", npcName = "Isolde the Healer", npcTitle = "Mountain Alchemist", npcArchetype = "ALCHEMIST",
+                goldChange = -20, healthChange = 25, statusEffect = "Vital Salve", factionMap = mapOf("Peasants" to 15, "Guilds" to 5), flag = "HERBAL_ALLIANCE",
+                opt1 = "Purchase plague-curing poultice", tag1 = "Herbal Remedy", archetype1 = "Peasant_Action",
+                opt2 = "Offer labor gathering rare marsh roots", tag2 = "Labor", archetype2 = "Peasant_Action",
+                opt3 = "Buy formula rights for merchant apothecary", tag3 = "Contract", archetype3 = "Merchant_Action"
+            ),
+            OfflineTemplate(
+                title = "Watchtower Garrison",
+                text = "Sir Roderick patrols the ruined watchtower, questioning all travelers for signs of rebellion.",
+                location = "Castle", npcName = "Sir Roderick", npcTitle = "Garrison Captain", npcArchetype = "KNIGHT",
+                goldChange = -5, healthChange = -5, statusEffect = "Military Discipline", factionMap = mapOf("Nobility" to 10, "Peasants" to -5), flag = "BORDER_GUARD",
+                opt1 = "Produce safe-passage seal from local magistrate", tag1 = "Royal Seal", archetype1 = "Noble_Action",
+                opt2 = "Offer silver coin to slip past quietly", tag2 = "Heavy Purse", archetype2 = "Merchant_Action",
+                opt3 = "Draw blade and fight through guardpost", tag3 = "Combat", archetype3 = "Noble_Action"
             )
         )
 
-        val selected = templates[(turn + Random.nextInt(templates.size)) % templates.size]
+        val templateIndex = (turn + worldState.worldFlags.size * 3 + worldState.gold) % templates.size
+        val selected = templates[templateIndex]
+
+        val actionDesc = chosenOptionText ?: if (isSlovak) "Vaše predchádzajúce rozhodnutie" else "Your previous choice"
 
         return EventResponse(
-            resolutionText = if (isSlovak) "K '$chosenOptionText': Postava ${selected.npcName} si vás ponuro meria pohľadom." else "Regarding '$chosenOptionText': ${selected.npcName} eyes you grimly as the immediate reaction unfolds.",
-            bridgeText = if (isSlovak) "Čas neúprosne plynie. Správa o vašom rozhodnutí sa šíri po okolitých panstvách." else "Hours turn into days across the realm. Word of your decision reaches neighboring fiefs.",
+            resolutionText = if (isSlovak) "V reakcii na '$actionDesc': Postava ${selected.npcName} prikývne a situácia sa mení." else "In response to '$actionDesc': ${selected.npcName} acknowledges your action as the consequences unfold.",
+            bridgeText = if (isSlovak) "Správy o vašich činoch sa šíria. Život v kráľovstve pokračuje ďalej." else "News of your conduct spreads across the region. Life in the realm carries on.",
             nextEventTitle = if (isSlovak) "${selected.title} (Ťah $turn)" else "${selected.title} (Turn $turn)",
             nextEventText = selected.text,
             location = selected.location,

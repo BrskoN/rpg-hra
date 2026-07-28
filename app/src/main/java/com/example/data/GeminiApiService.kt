@@ -30,7 +30,7 @@ class GeminiApiService {
         }
 
         try {
-            val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
+            val candidateModels = listOf("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest", "gemini-3.5-flash")
 
             val activeTitle = worldState.activeOrigin.title
             val activeFlagsArray = JSONArray().apply {
@@ -45,7 +45,7 @@ class GeminiApiService {
 
             val effectiveAnchor = anchorContext ?: when {
                 worldState.turnCount == 1 -> OriginSeed.getRandomSeedForOrigin(worldState.activeOrigin).seedPromptContext
-                worldState.turnCount % 5 == 0 -> StoryAnchor.selectAnchorForWorldState(worldState).anchorPromptContext
+                worldState.turnCount % 4 == 0 -> StoryAnchor.selectAnchorForWorldState(worldState).anchorPromptContext
                 else -> null
             }
 
@@ -94,69 +94,63 @@ class GeminiApiService {
 
             val promptText = buildString {
                 if (!ongoingSceneContext.isNullOrBlank()) {
-                    append("MANDATORY ONGOING SCENE: $ongoingSceneContext. MANDATORY ACTIVE NPC: ${ongoingNpc ?: "Unknown"}. Do NOT introduce new plots, do NOT change the NPC.\n\n")
+                    append("MANDATORY ONGOING SCENE (Turn ${worldState.activeSceneTurns + 1} of max 3): $ongoingSceneContext. ACTIVE NPC: ${ongoingNpc ?: "Unknown"}. ")
+                    if (worldState.activeSceneTurns >= 2) {
+                        append("CRITICAL: This is turn 3 of this scene. You MUST resolve and finish this encounter completely now! Set 'updatedActiveSceneContext': null and 'updatedActiveNpc': null.\n\n")
+                    } else {
+                        append("You can continue this scene if needed, or resolve it now by setting 'updatedActiveSceneContext': null.\n\n")
+                    }
                 }
 
                 if (worldState.selectedLanguage == AppLanguage.SLOVAK) {
-                    append("CRITICAL: All generated text (titles, narratives, choices, resolution text) must be in flawless, high-register Slovak (Slovenčina) without typos (e.g., use 'relikviu', never 'rekliviu'). Action choices must strictly mirror the immediate physical reality of the active scene. No random church offerings when facing a knight or bandit. Use rich, gritty medieval vocabulary (e.g., 'panský dráb', 'desiatok', 'verbovač', 'mošna', 'krčmár'). Do not output any English text.\n\n")
+                    append("CRITICAL LANGUAGE RULE: Write the ENTIRE response (titles, narratives, choices, resolution text) in flawless, high-register Slovak (Slovenčina). Use rich medieval vocabulary ('panský dráb', 'desiatok', 'verbovač', 'mošna', 'krčmár'). Do not output any English text.\n\n")
                 } else {
-                    append("LANGUAGE RULE: Write the ENTIRE narrative response (nextEventTitle, nextEventText, resolutionText, bridgeText, and card action titles) in ENGLISH. Action choices must strictly mirror the immediate physical reality of the active scene.\n\n")
+                    append("CRITICAL LANGUAGE RULE: Write the ENTIRE narrative response (titles, text, choices, resolution) in ENGLISH.\n\n")
                 }
 
-                append("You are a ruthless, causality-driven Game Master. Do NOT generate random, disconnected fantasy tropes.\n\n")
+                append("You are a ruthless medieval Game Master. Keep responses crisp and fast.\n\n")
 
                 append("CRITICAL DIRECTIVES:\n")
-                append("1. CHAIN OF THOUGHT REASONING: Before generating ANY narrative text, you MUST use the `internal_reasoning` field to think step-by-step. Example: 'The player challenged the Knight. The mandatory active NPC is the Knight. I must describe the Knight's reaction. I will absolutely not mention Bishop Alistair, the Bailiff, or unrelated past events.' This field forces you to maintain absolute NPC integrity.\n")
-                append("2. [IMMEDIATE ACTIVE SCENE - CRITICAL PRIORITY]: This overrides everything in background lore. Do not change the NPC or location under any circumstance while a scene is active.\n")
-                append("3. [BACKGROUND LORE - LOW PRIORITY]: Only reference active_flags, factions, and past events if logically demanded by the immediate action. Do not randomly bleed past flags (e.g. KILLED_BAILIFF) into unrelated new scenes.\n")
-                append("4. NPC INTEGRITY: The entity responding in 'resolutionText' MUST be the exact same entity leading the 'bridgeText' and 'nextEventText'. Do not magically switch from a Bishop to a Knight.\n")
-                append("5. SCENE CONTINUITY: If a MANDATORY ONGOING SCENE is provided, your entire response must focus ONLY on resolving the immediate next seconds of that specific conflict. Do not jump to unrelated events until the current scene is logically marked as resolved.\n")
-                append("6. NO REPETITION: Ensure the 3 generated action cards are distinctly different from the previous turn's options.\n")
-                append("7. Every stat change (-gold, +tension) MUST have a direct, logical explanation explicitly written in the `resolutionText`.\n\n")
+                append("1. CONCISE CARD CHOICES (MANDATORY): Each card option 'text' MUST BE EXTREMELY SHORT, MAXIMUM 4 TO 6 WORDS (e.g. 'Ponúknuť úplatok v zrne', 'Siahnuť po meči a bojovať', 'Požiadať o azyl' / 'Offer grain bribe for passage', 'Draw blade and challenge', 'Request sanctuary'). Each card 'tag' MUST BE 1 TO 2 WORDS MAXIMUM (e.g. 'Úplatok', 'Boj', 'Azyl' / 'Bribe', 'Combat', 'Sanctuary'). NEVER put ellipsis '...' or truncated sentences on cards!\n")
+                append("2. REAL STAT CONSEQUENCES & FATAL RISKS (CRITICAL): The player currently has Health=${worldState.health}, Gold=${worldState.gold}, Tension=${worldState.regionalTension}, Notoriety=${worldState.notoriety}. If the player picks a dangerous, violent, or foolish choice, ALWAYS apply severe negative penalties: healthChange (-15 to -40), goldChange (-20 to -50), regionalTensionChange (+10 to +25), notorietyChange (+10 to +25). If the player has low health (Health <= 30) and picks a combat/risky option, deal FATAL damage (healthChange: -35 to -50) so the player CAN DIE and trigger Game Over!\n")
+                append("3. SCENE DURATION (1 TO 3 TURNS MAX): A confrontation can span up to 3 turns maximum for multi-part encounters, but MUST finish on or before turn 3 with 'updatedActiveSceneContext': null and 'updatedActiveNpc': null. Advance the narrative to fresh locations and new NPCs after a scene completes!\n")
+                append("4. GRAND STORY PROGRESSION: At Turn 4, Turn 8, Turn 12, Turn 16, escalate the overarching kingdom narrative (e.g. War outbreak, Royal decree, Rebellion, Assassination, Plague). Do NOT trap the player in repetitive intro conversations!\n")
+                append("5. CHAIN OF THOUGHT REASONING: Use 'internal_reasoning' to think step-by-step first.\n")
+                append("6. NO REPETITION: Make the 3 choice cards distinctly different from past options.\n\n")
 
                 if (effectiveAnchor != null && ongoingSceneContext.isNullOrBlank()) {
                     if (worldState.turnCount == 1) {
                         append("MANDATORY TURN 1 STORY HOOK:\n")
-                        append("$effectiveAnchor\n")
-                        append("You MUST establish the opening scene, title, NPC interaction, and options directly around this story hook!\n\n")
+                        append("$effectiveAnchor\n\n")
                     } else {
                         append("ANCHOR EVENT CONTEXT:\n")
-                        append("$effectiveAnchor\n")
-                        append("Rule: If an 'Anchor Event Context' is provided in the payload, you MUST make it the central conflict of this turn, blending it seamlessly into the player's ongoing story.\n\n")
+                        append("$effectiveAnchor\n\n")
                     }
                 }
-
-                append("RULES FOR EVENT GENERATION:\n")
-                append("A. Causal Link: The core conflict of this turn MUST directly reference the immediate active scene or previous action.\n")
-                append("B. Environmental Pressure: The event text MUST incorporate the 'environment' (e.g., descriptions of freezing cold if HARSH_WINTER).\n")
-                append("C. Tension/Notoriety Check: If 'tension' is > 70, the event must have a violent or desperate undertone.\n")
-                append("D. Options: Generate 3 contextual response cards matching the immediate scene reality.\n")
-                append("E. Scene Locking: If the scene/confrontation continues into the next turn, return the exact same or refined updatedActiveSceneContext and updatedActiveNpc. If the NPC dies, leaves, or the player escapes, return null for both, which will unlock the game for a new story anchor.\n\n")
 
                 append("GAME ENGINE CONTEXT PAYLOAD:\n")
                 append(payloadContext.toString(2))
                 append("\n\n")
 
                 append("EXACT JSON OUTPUT FORMAT RULES:\n")
-                append("1. 'internal_reasoning' MUST be the VERY FIRST field in the JSON output, containing your step-by-step reasoning.\n")
+                append("1. 'internal_reasoning' MUST be the VERY FIRST field.\n")
                 append("2. location MUST be one of: 'Forest', 'Village', 'Tavern', 'Castle', 'Cathedral', 'Marketplace'.\n")
                 append("3. npcArchetype MUST be one of: 'PEASANT', 'MERCHANT', 'KNIGHT', 'BISHOP', 'ALCHEMIST', 'BANDIT', 'NOBLE', 'MONARCH'.\n")
-                append("4. Provide statChanges with goldChange (-50 to +50), healthChange (-30 to +20), regionalTensionChange (-15 to +15), notorietyChange (-15 to +15), statusEffect (short string), factionChanges (e.g. {\"Church\": 10, \"Peasants\": -5, \"Nobility\": 0, \"Underworld\": 0, \"Guilds\": 0}).\n")
-                append("5. newWorldFlags is an array of strings (e.g. [\"KILLED_BAILIFF\", \"SHADOW_DEAL\"]).\n")
-                append("6. Always output EXACTLY 3 choice cards in options array.\n")
-                append("7. Return ONLY valid JSON matching this exact structure without markdown backticks:\n")
+                append("4. resolutionText (max 2 sentences), bridgeText (max 2 sentences), nextEventText (max 2-3 sentences).\n")
+                append("5. options array must contain EXACTLY 3 items with 4-6 word 'text' and 1-2 word 'tag'.\n")
+                append("6. Return ONLY valid JSON matching this exact structure without markdown backticks:\n")
                 append("{\n")
-                append("  \"internal_reasoning\": \"Step-by-step logic: The player selected grain bribe. The mandatory active NPC is Elder Tobias. I will describe Elder Tobias accepting the grain bribe, maintaining Elder Tobias as the active NPC.\",\n")
-                append("  \"resolutionText\": \"Brutal immediate reaction of NPC to chosen action (max 2 sentences).\",\n")
-                append("  \"bridgeText\": \"Time-lapse fallout transition leading into the next scenario (max 2 sentences).\",\n")
+                append("  \"internal_reasoning\": \"Resolving encounter with Elder Tobias.\",\n")
+                append("  \"resolutionText\": \"Brutal immediate reaction of NPC (max 2 sentences).\",\n")
+                append("  \"bridgeText\": \"Time-lapse fallout transition leading into next scenario (max 2 sentences).\",\n")
                 append("  \"nextEventTitle\": \"Short dramatic title for next turn\",\n")
-                append("  \"nextEventText\": \"Concise story setup for next turn incorporating environment and causal flags (max 2-3 sentences).\",\n")
+                append("  \"nextEventText\": \"Concise story setup for next turn (max 2-3 sentences).\",\n")
                 append("  \"location\": \"Village\",\n")
                 append("  \"npcName\": \"Elder Tobias\",\n")
                 append("  \"npcTitle\": \"Village Patriarch\",\n")
                 append("  \"npcArchetype\": \"PEASANT\",\n")
-                append("  \"updatedActiveSceneContext\": \"Ongoing confrontation with Elder Tobias over uncollected tithes or null if resolved\",\n")
-                append("  \"updatedActiveNpc\": \"Elder Tobias or null if resolved\",\n")
+                append("  \"updatedActiveSceneContext\": null,\n")
+                append("  \"updatedActiveNpc\": null,\n")
                 append("  \"statChanges\": {\n")
                 append("    \"goldChange\": -15,\n")
                 append("    \"healthChange\": -5,\n")
@@ -167,9 +161,9 @@ class GeminiApiService {
                 append("  },\n")
                 append("  \"newWorldFlags\": [\"GRAIN_BRIBE_ACCEPTED\"],\n")
                 append("  \"options\": [\n")
-                append("    {\"id\": 1, \"text\": \"Offer grain bribe for passage\", \"tag\": \"Grain Bribe\", \"cardArchetype\": \"Peasant_Action\"},\n")
-                append("    {\"id\": 2, \"text\": \"Pledge service to church sanctuary\", \"tag\": \"Humble Plea\", \"cardArchetype\": \"Church_Action\"},\n")
-                append("    {\"id\": 3, \"text\": \"Stand ground with pitchfork drawn\", \"tag\": \"Combat\", \"cardArchetype\": \"Peasant_Action\"}\n")
+                append("    {\"id\": 1, \"text\": \"Ponúknuť úplatok v zrne\", \"tag\": \"Úplatok\", \"cardArchetype\": \"Peasant_Action\"},\n")
+                append("    {\"id\": 2, \"text\": \"Požiadať o pokorný azyl\", \"tag\": \"Azyl\", \"cardArchetype\": \"Church_Action\"},\n")
+                append("    {\"id\": 3, \"text\": \"Siahnuť po meči a bojovať\", \"tag\": \"Boj\", \"cardArchetype\": \"Peasant_Action\"}\n")
                 append("  ]\n")
                 append("}")
             }
@@ -186,42 +180,51 @@ class GeminiApiService {
                 })
                 put("generationConfig", JSONObject().apply {
                     put("responseMimeType", "application/json")
-                    put("temperature", 0.8)
-                    put("maxOutputTokens", 3072)
+                    put("temperature", 0.7)
+                    put("maxOutputTokens", 1024)
                 })
             }
 
             val requestBody = requestJson.toString().toRequestBody("application/json".toMediaType())
-            val request = Request.Builder()
-                .url(url)
-                .post(requestBody)
-                .build()
 
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) {
-                return@withContext null
+            for (model in candidateModels) {
+                val url = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey"
+                val request = Request.Builder()
+                    .url(url)
+                    .post(requestBody)
+                    .build()
+
+                try {
+                    val response = client.newCall(request).execute()
+                    if (!response.isSuccessful) continue
+
+                    val responseBodyString = response.body?.string() ?: continue
+                    val rootObj = JSONObject(responseBodyString)
+                    val candidates = rootObj.optJSONArray("candidates") ?: continue
+                    if (candidates.length() == 0) continue
+
+                    val firstCandidate = candidates.getJSONObject(0)
+                    val content = firstCandidate.optJSONObject("content") ?: continue
+                    val parts = content.optJSONArray("parts") ?: continue
+                    if (parts.length() == 0) continue
+
+                    val jsonText = parts.getJSONObject(0).optString("text", "")
+                    if (jsonText.isBlank()) continue
+
+                    val cleanedJson = jsonText
+                        .replace("^```json".toRegex(), "")
+                        .replace("^```".toRegex(), "")
+                        .replace("```$".toRegex(), "")
+                        .trim()
+
+                    val result = parseEventResponseJson(cleanedJson, activeTitle)
+                    if (result != null) return@withContext result
+                } catch (e: Exception) {
+                    android.util.Log.e("GeminiApiService", "Failed model $model: ${e.message}")
+                }
             }
 
-            val responseBodyString = response.body?.string() ?: return@withContext null
-            val rootObj = JSONObject(responseBodyString)
-            val candidates = rootObj.optJSONArray("candidates") ?: return@withContext null
-            if (candidates.length() == 0) return@withContext null
-
-            val firstCandidate = candidates.getJSONObject(0)
-            val content = firstCandidate.optJSONObject("content") ?: return@withContext null
-            val parts = content.optJSONArray("parts") ?: return@withContext null
-            if (parts.length() == 0) return@withContext null
-
-            val jsonText = parts.getJSONObject(0).optString("text", "")
-            if (jsonText.isBlank()) return@withContext null
-
-            val cleanedJson = jsonText
-                .replace("^```json".toRegex(), "")
-                .replace("^```".toRegex(), "")
-                .replace("```$".toRegex(), "")
-                .trim()
-
-            parseEventResponseJson(cleanedJson, activeTitle)
+            null
         } catch (e: Exception) {
             e.printStackTrace()
             null
