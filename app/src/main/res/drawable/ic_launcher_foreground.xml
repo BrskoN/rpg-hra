@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Medieval Shield Outer Gold Border -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M54,22 C68,22 80,26 82,30 C82,54 70,72 54,86 C38,72 26,54 26,30 C28,26 40,22 54,22 Z" />
+    <!-- Inner Dark Crest -->
+    <path
+        android:fillColor="#4A1217"
+        android:pathData="M54,26 C65,26 75,29 77,33 C77,52 67,67 54,79 C41,67 31,52 31,33 C33,29 43,26 54,26 Z" />
+    <!-- Gold Crown Emblem in Shield Center -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M42,54 L44,42 L50,47 L54,39 L58,47 L64,42 L66,54 Z" />
+    <!-- Sword Blade Accent -->
+    <path
+        android:fillColor="#FFF2DC"
+        android:pathData="M53,30 L55,30 L55,62 L53,62 Z" />
+</vector>

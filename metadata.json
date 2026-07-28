@@ -1,0 +1,6 @@
+{
+  "name": "Medieval RPG",
+  "description": "A medieval narrative RPG game driven by choices and AI storytelling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
