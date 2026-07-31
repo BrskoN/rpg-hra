@@ -17,6 +17,41 @@ class GameRepository(private val geminiApiService: GeminiApiService = GeminiApiS
         return generateOfflineEvent(worldState, chosenOptionText, anchorContext)
     }
 
+    /**
+     * Attempts a one-off AI-generated bonus vignette for an origin that already has an authored
+     * EventDeck, so a run gets a unique flavor detour instead of the exact same sandbox pool every
+     * time. Returns null (never throws) if there is no API key, no network, or the model call
+     * fails - callers must fall back to the authored deck content in that case.
+     */
+    suspend fun getSpiceEvent(worldState: WorldState): EventResponse? {
+        return try {
+            geminiApiService.generateSpiceEvent(worldState)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Restyles an already-decided authored EventDeck outcome into fresh AI prose. Returns null
+     * (never throws) on any failure so callers keep their static authored text.
+     */
+    suspend fun stylizeOutcome(
+        worldState: WorldState,
+        npcName: String,
+        npcTitle: String,
+        location: String,
+        chosenActionText: String,
+        consequenceSummary: String
+    ): StylizedOutcome? {
+        return try {
+            geminiApiService.stylizeOutcome(
+                worldState, npcName, npcTitle, location, chosenActionText, consequenceSummary, worldState.selectedLanguage
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     private fun generateOfflineEvent(
         worldState: WorldState,
         chosenOptionText: String?,

@@ -11,27 +11,93 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+data class StylizedOutcome(
+    val resolutionText: String,
+    val bridgeText: String
+)
+
 class GeminiApiService {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
         .build()
+
+    private val candidateModels = listOf("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest", "gemini-3.5-flash")
+
+    private fun hasApiKey(): Boolean {
+        val apiKey = BuildConfig.GEMINI_API_KEY
+        return apiKey.isNotBlank() && apiKey != "MY_GEMINI_API_KEY"
+    }
+
+    /**
+     * Sends [promptText] to the first Gemini model (of [candidateModels]) that returns a usable
+     * response, and returns the raw JSON text it produced. Returns null on any failure (missing
+     * key, no network, every model rejected) so every caller can fall back to static content
+     * without ever crashing or blocking the game on a dead API.
+     */
+    private suspend fun callGeminiJson(promptText: String, maxOutputTokens: Int, temperature: Double = 0.7): String? =
+        withContext(Dispatchers.IO) {
+            if (!hasApiKey()) return@withContext null
+
+            val requestJson = JSONObject().apply {
+                put("contents", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("parts", JSONArray().apply {
+                            put(JSONObject().apply { put("text", promptText) })
+                        })
+                    })
+                })
+                put("generationConfig", JSONObject().apply {
+                    put("responseMimeType", "application/json")
+                    put("temperature", temperature)
+                    put("maxOutputTokens", maxOutputTokens)
+                })
+            }
+            val requestBody = requestJson.toString().toRequestBody("application/json".toMediaType())
+            val apiKey = BuildConfig.GEMINI_API_KEY
+
+            for (model in candidateModels) {
+                val url = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey"
+                val request = Request.Builder().url(url).post(requestBody).build()
+                try {
+                    val response = client.newCall(request).execute()
+                    if (!response.isSuccessful) continue
+
+                    val responseBodyString = response.body?.string() ?: continue
+                    val rootObj = JSONObject(responseBodyString)
+                    val candidates = rootObj.optJSONArray("candidates") ?: continue
+                    if (candidates.length() == 0) continue
+
+                    val firstCandidate = candidates.getJSONObject(0)
+                    val content = firstCandidate.optJSONObject("content") ?: continue
+                    val parts = content.optJSONArray("parts") ?: continue
+                    if (parts.length() == 0) continue
+
+                    val jsonText = parts.getJSONObject(0).optString("text", "")
+                    if (jsonText.isBlank()) continue
+
+                    val cleanedJson = jsonText
+                        .replace("^```json".toRegex(), "")
+                        .replace("^```".toRegex(), "")
+                        .replace("```$".toRegex(), "")
+                        .trim()
+
+                    return@withContext cleanedJson
+                } catch (e: Exception) {
+                    android.util.Log.e("GeminiApiService", "Failed model $model: ${e.message}")
+                }
+            }
+            null
+        }
 
     suspend fun generateNextEvent(
         worldState: WorldState,
         chosenActionText: String?,
         anchorContext: String? = null
-    ): EventResponse? = withContext(Dispatchers.IO) {
-        val apiKey = BuildConfig.GEMINI_API_KEY
-        if (apiKey.isBlank() || apiKey == "MY_GEMINI_API_KEY") {
-            return@withContext null
-        }
-
+    ): EventResponse? {
         try {
-            val candidateModels = listOf("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest", "gemini-3.5-flash")
-
             val activeTitle = worldState.activeOrigin.title
             val activeFlagsArray = JSONArray().apply {
                 worldState.worldFlags.forEach { put(it) }
@@ -109,6 +175,7 @@ class GeminiApiService {
                 }
 
                 append("You are a ruthless medieval Game Master. Keep responses crisp and fast.\n\n")
+                append(originLaneGuidance(worldState.activeOrigin, worldState.selectedLanguage))
 
                 append("CRITICAL DIRECTIVES:\n")
                 append("1. CONCISE CARD CHOICES (MANDATORY): Each card option 'text' MUST BE EXTREMELY SHORT, MAXIMUM 4 TO 6 WORDS (e.g. 'Ponúknuť úplatok v zrne', 'Siahnuť po meči a bojovať', 'Požiadať o azyl' / 'Offer grain bribe for passage', 'Draw blade and challenge', 'Request sanctuary'). Each card 'tag' MUST BE 1 TO 2 WORDS MAXIMUM (e.g. 'Úplatok', 'Boj', 'Azyl' / 'Bribe', 'Combat', 'Sanctuary'). NEVER put ellipsis '...' or truncated sentences on cards!\n")
@@ -168,67 +235,142 @@ class GeminiApiService {
                 append("}")
             }
 
-            val requestJson = JSONObject().apply {
-                put("contents", JSONArray().apply {
-                    put(JSONObject().apply {
-                        put("parts", JSONArray().apply {
-                            put(JSONObject().apply {
-                                put("text", promptText)
-                            })
-                        })
-                    })
-                })
-                put("generationConfig", JSONObject().apply {
-                    put("responseMimeType", "application/json")
-                    put("temperature", 0.7)
-                    put("maxOutputTokens", 1024)
-                })
-            }
-
-            val requestBody = requestJson.toString().toRequestBody("application/json".toMediaType())
-
-            for (model in candidateModels) {
-                val url = "https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey"
-                val request = Request.Builder()
-                    .url(url)
-                    .post(requestBody)
-                    .build()
-
-                try {
-                    val response = client.newCall(request).execute()
-                    if (!response.isSuccessful) continue
-
-                    val responseBodyString = response.body?.string() ?: continue
-                    val rootObj = JSONObject(responseBodyString)
-                    val candidates = rootObj.optJSONArray("candidates") ?: continue
-                    if (candidates.length() == 0) continue
-
-                    val firstCandidate = candidates.getJSONObject(0)
-                    val content = firstCandidate.optJSONObject("content") ?: continue
-                    val parts = content.optJSONArray("parts") ?: continue
-                    if (parts.length() == 0) continue
-
-                    val jsonText = parts.getJSONObject(0).optString("text", "")
-                    if (jsonText.isBlank()) continue
-
-                    val cleanedJson = jsonText
-                        .replace("^```json".toRegex(), "")
-                        .replace("^```".toRegex(), "")
-                        .replace("```$".toRegex(), "")
-                        .trim()
-
-                    val result = parseEventResponseJson(cleanedJson, activeTitle)
-                    if (result != null) return@withContext result
-                } catch (e: Exception) {
-                    android.util.Log.e("GeminiApiService", "Failed model $model: ${e.message}")
-                }
-            }
-
-            null
+            val cleanedJson = callGeminiJson(promptText, maxOutputTokens = 1024) ?: return null
+            return parseEventResponseJson(cleanedJson, activeTitle)
         } catch (e: Exception) {
             e.printStackTrace()
-            null
+            return null
         }
+    }
+
+    /**
+     * Generates a single self-contained "spice" vignette that slots into the deck-driven sandbox
+     * turns of an origin that already has an authored EventDeck. Kept strictly within that
+     * origin's plausible social lane (a peasant never attends a royal feast) so it reads as
+     * belonging to this specific playthrough rather than a generic fantasy scene. Consequences of
+     * the 3 offered choices are NOT decided here - exactly like the pre-existing AI path, they are
+     * resolved by a follow-up generateNextEvent call once the player actually picks one, using the
+     * same origin-lane guidance for continuity. Returns null on any failure so callers can silently
+     * fall back to the authored deck content.
+     */
+    suspend fun generateSpiceEvent(worldState: WorldState): EventResponse? {
+        try {
+            val activeTitle = worldState.activeOrigin.title
+            val isSlovak = worldState.selectedLanguage == AppLanguage.SLOVAK
+
+            val promptText = buildString {
+                if (isSlovak) {
+                    append("CRITICAL LANGUAGE RULE: Write the ENTIRE response in flawless, high-register Slovak (Slovenčina). Use rich medieval vocabulary. Do not output any English text.\n\n")
+                } else {
+                    append("CRITICAL LANGUAGE RULE: Write the ENTIRE response in ENGLISH.\n\n")
+                }
+
+                append("You are a ruthless medieval Game Master writing ONE small, self-contained bonus vignette to add per-playthrough variety to an otherwise fixed storyline. ")
+                append("This is NOT part of the main plot - it is a short, flavorful side-encounter with no lasting story obligations.\n\n")
+
+                append(originLaneGuidance(worldState.activeOrigin, worldState.selectedLanguage))
+
+                append("CURRENT STATE: Player class: $activeTitle. Turn: ${worldState.turnCount}. Gold: ${worldState.gold}. Health: ${worldState.health}. ")
+                append("Tension: ${worldState.regionalTension}. Notoriety: ${worldState.notoriety}.\n\n")
+
+                append("DIRECTIVES:\n")
+                append("1. Invent a brand new minor NPC and a small, self-contained situation appropriate to this character's exact social station - nothing that requires the wider story to change.\n")
+                append("2. Any new world-flag you introduce MUST be prefixed with 'SPICE_' so it never collides with the main storyline's flags.\n")
+                append("3. CONCISE CARD CHOICES: each option 'text' MUST be 4-6 words max, 'tag' MUST be 1-2 words max.\n")
+                append("4. location MUST be one of: 'Forest', 'Village', 'Tavern', 'Castle', 'Cathedral', 'Marketplace' - choose only ones plausible for this character.\n")
+                append("5. npcArchetype MUST be one of: 'PEASANT', 'MERCHANT', 'KNIGHT', 'BISHOP', 'ALCHEMIST', 'BANDIT', 'NOBLE', 'ELDER'.\n")
+                append("6. Return ONLY valid JSON, no markdown backticks:\n")
+                append("{\n")
+                append("  \"internal_reasoning\": \"Short one-off vignette fitting this character's station.\",\n")
+                append("  \"nextEventTitle\": \"Short dramatic title\",\n")
+                append("  \"nextEventText\": \"Concise self-contained setup (max 2-3 sentences).\",\n")
+                append("  \"location\": \"Village\",\n")
+                append("  \"npcName\": \"Name\",\n")
+                append("  \"npcTitle\": \"Title\",\n")
+                append("  \"npcArchetype\": \"PEASANT\",\n")
+                append("  \"options\": [\n")
+                append("    {\"id\": 1, \"text\": \"Short option text\", \"tag\": \"Tag\", \"cardArchetype\": \"Peasant_Action\"},\n")
+                append("    {\"id\": 2, \"text\": \"Short option text\", \"tag\": \"Tag\", \"cardArchetype\": \"Peasant_Action\"},\n")
+                append("    {\"id\": 3, \"text\": \"Short option text\", \"tag\": \"Tag\", \"cardArchetype\": \"Peasant_Action\"}\n")
+                append("  ]\n")
+                append("}")
+            }
+
+            val cleanedJson = callGeminiJson(promptText, maxOutputTokens = 512, temperature = 0.9) ?: return null
+            return parseEventResponseJson(cleanedJson, activeTitle)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
+        }
+    }
+
+    /**
+     * Restyles the already-decided mechanical outcome of an authored EventDeck choice into fresh
+     * sensory prose. The consequence (stat/flag deltas) is fixed before this is ever called - the
+     * model is only asked to re-narrate it, never to change it. Returns null on any failure so the
+     * caller keeps its static authored text.
+     */
+    suspend fun stylizeOutcome(
+        worldState: WorldState,
+        npcName: String,
+        npcTitle: String,
+        location: String,
+        chosenActionText: String,
+        consequenceSummary: String,
+        lang: AppLanguage
+    ): StylizedOutcome? {
+        try {
+            val promptText = buildString {
+                if (lang == AppLanguage.SLOVAK) {
+                    append("CRITICAL LANGUAGE RULE: Write in flawless, high-register Slovak (Slovenčina). Do not output any English text.\n\n")
+                } else {
+                    append("CRITICAL LANGUAGE RULE: Write in ENGLISH.\n\n")
+                }
+
+                append("You are re-narrating an ALREADY-DECIDED outcome in a dark medieval RPG. You must NOT invent a different outcome, change what happened, or add new stat effects - only describe, with fresh sensory detail (sounds, smells, physical sensation), the exact event below.\n\n")
+
+                append("Location: $location\n")
+                append("NPC: $npcName ($npcTitle)\n")
+                append("Player's chosen action: \"$chosenActionText\"\n")
+                append("Decided outcome (do not contradict this): $consequenceSummary\n\n")
+
+                append("Write exactly two short fields, each MAX 2 sentences, in the same tone as a gritty Witcher/Game of Thrones-style narrator:\n")
+                append("Return ONLY valid JSON, no markdown backticks:\n")
+                append("{\n")
+                append("  \"resolutionText\": \"Immediate sensory reaction to the decided outcome (max 2 sentences).\",\n")
+                append("  \"bridgeText\": \"Short time-lapse transition following from that outcome (max 2 sentences).\"\n")
+                append("}")
+            }
+
+            val cleanedJson = callGeminiJson(promptText, maxOutputTokens = 256, temperature = 0.8) ?: return null
+            val obj = JSONObject(cleanedJson)
+            val resolutionText = sanitizeText(obj.optString("resolutionText", ""), "")
+            val bridgeText = sanitizeText(obj.optString("bridgeText", ""), "")
+            if (resolutionText.isBlank() || bridgeText.isBlank()) return null
+            return StylizedOutcome(resolutionText, bridgeText)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return null
+        }
+    }
+
+    private fun originLaneGuidance(origin: OriginClass, lang: AppLanguage): String {
+        val laneEn = when (origin) {
+            OriginClass.PEASANT -> "This character is a lowly peasant. Plausible settings: village, farm, forest, tavern, the fringes of a market. Plausible company: other peasants, local clergy, huntsmen, bailiffs, traveling merchants, bandits. NEVER place them at a royal court, in a king's presence, or handling matters of state - they are far too lowborn for that."
+            OriginClass.ACOLYTE -> "This character is a monastery acolyte. Plausible settings: monastery, cathedral, village, crypt. Plausible company: monks, priests, the bishop, pilgrims, common villagers. NEVER place them commanding armies or presiding over royal court politics."
+            OriginClass.GUILD_APPRENTICE -> "This character is a city guild apprentice. Plausible settings: workshop, marketplace, tavern, city gate, docks. Plausible company: guildmasters, merchants, city guards, moneylenders, underworld contacts. NEVER place them in rural farm life or in a royal throne room as an equal to nobles."
+            OriginClass.LESSER_NOBLE -> "This character is an impoverished lesser noble with a small ancestral keep. Plausible settings: their own keep, neighboring estates, a county town, occasionally the fringes of a royal court (as a minor attendee, never as an equal to the king). Plausible company: other minor nobles, knights, tax collectors, tenants. Keep the scale modest - they do not command national armies."
+            else -> "Keep the scene appropriate to this character's actual social station and means."
+        }
+        val laneSk = when (origin) {
+            OriginClass.PEASANT -> "Táto postava je prostý sedliak. Vhodné prostredia: dedina, pole, les, krčma, okraj trhoviska. Vhodná spoločnosť: iní sedliaci, miestny klér, hájnici, drábi, potulní kupci, zbojníci. NIKDY ho nezasaď na kráľovský dvor, do prítomnosti kráľa, ani do štátnych záležitostí - je na to príliš nízkeho pôvodu."
+            OriginClass.ACOLYTE -> "Táto postava je kláštorný akolyt. Vhodné prostredia: kláštor, katedrála, dedina, krypta. Vhodná spoločnosť: mnísi, kňazi, biskup, pútnici, obyčajní dedinčania. NIKDY ho nezasaď do velenia vojskám ani do kráľovskej dvorskej politiky."
+            OriginClass.GUILD_APPRENTICE -> "Táto postava je mestský cechový tovariš. Vhodné prostredia: dielňa, trhovisko, krčma, mestská brána, prístav. Vhodná spoločnosť: cechmajstri, kupci, mestská stráž, úžerníci, kontakty z podsvetia. NIKDY ho nezasaď do vidieckeho roľníckeho života ani na kráľovský trón ako rovnocenného šľachte."
+            OriginClass.LESSER_NOBLE -> "Táto postava je zubožený nízky šľachtic s malou rodovou tvrdzou. Vhodné prostredia: vlastná tvrdz, susedné panstvá, krajské mesto, okrajovo kráľovský dvor (ako drobný účastník, nikdy ako rovný kráľovi). Vhodná spoločnosť: iní drobní šľachtici, rytieri, výbercovia daní, nájomcovia. Drž rozsah skromný - nevelí národným vojskám."
+            else -> "Zasaď scénu primerane skutočnému spoločenskému postaveniu a prostriedkom tejto postavy."
+        }
+        val guidance = if (lang == AppLanguage.SLOVAK) laneSk else laneEn
+        return "CHARACTER SOCIAL LANE (MANDATORY): $guidance\n\n"
     }
 
     // Overload for backward compatibility

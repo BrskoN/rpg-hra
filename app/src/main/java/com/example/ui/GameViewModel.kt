@@ -141,9 +141,11 @@ class GameViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             _isLoading.value = true
 
-            val chosenDeckChoice = if (isDeckChoice) {
-                EventDeck.findChoice(option.sourceNodeId!!, option.sourceChoiceId!!)?.second
+            val deckMatch = if (isDeckChoice) {
+                EventDeck.findChoice(option.sourceNodeId!!, option.sourceChoiceId!!)
             } else null
+            val deckNodeForChoice = deckMatch?.first
+            val chosenDeckChoice = deckMatch?.second
             val resolvedDeckConsequence = chosenDeckChoice?.resolve(currentWorld)
 
             val nextResponse = if (isDeckChoice) {
@@ -153,9 +155,13 @@ class GameViewModel @JvmOverloads constructor(
             }
 
             val changes = nextResponse.statChanges
-            val netGoldChange = changes.goldChange
+            // Deck outcomes get a small numeric jitter so replaying the same authored card doesn't
+            // feel numerically identical every time - flavor text never states exact numbers, so
+            // this never contradicts the authored prose.
+            val netGoldChange = if (isDeckChoice) jitterAmount(changes.goldChange) else changes.goldChange
+            val jitteredHealthChange = if (isDeckChoice) jitterAmount(changes.healthChange) else changes.healthChange
             val newGold = (currentWorld.gold + netGoldChange).coerceAtLeast(0)
-            val newHealth = (currentWorld.health + changes.healthChange).coerceIn(0, currentWorld.maxHealth)
+            val newHealth = (currentWorld.health + jitteredHealthChange).coerceIn(0, currentWorld.maxHealth)
             val newTension = (currentWorld.regionalTension + changes.regionalTensionChange).coerceIn(0, 100)
             val newNotoriety = (currentWorld.notoriety + changes.notorietyChange).coerceIn(0, 100)
 
@@ -228,11 +234,29 @@ class GameViewModel @JvmOverloads constructor(
                 else "You were completely bankrupted and locked away in debtor's prison."
             }
 
-            val resolutionReaction = nextResponse.resolutionText.ifBlank {
+            var resolutionReaction = nextResponse.resolutionText.ifBlank {
                 "Regarding '${option.text}': ${nextResponse.npcName} eyes you with grim intent as your action takes effect."
             }
-            val bridgeNarrative = nextResponse.bridgeText.ifBlank {
+            var bridgeNarrative = nextResponse.bridgeText.ifBlank {
                 "Days pass in the realm as the consequences of your decision take root across the provinces."
+            }
+
+            // Ask the AI to re-narrate this already-decided authored outcome with fresh sensory
+            // detail. It cannot change what happened - only how it's described - and silently
+            // keeps the static authored prose if there's no key/network/model available.
+            if (isDeckChoice && deckNodeForChoice != null) {
+                val stylized = repository.stylizeOutcome(
+                    worldState = currentWorld,
+                    npcName = nextResponse.npcName,
+                    npcTitle = deckNodeForChoice.npcTitle,
+                    location = deckNodeForChoice.location,
+                    chosenActionText = option.text,
+                    consequenceSummary = "$resolutionReaction $bridgeNarrative"
+                )
+                if (stylized != null) {
+                    resolutionReaction = stylized.resolutionText
+                    bridgeNarrative = stylized.bridgeText
+                }
             }
 
             val updatedCharactersMet = (currentWorld.recentCharactersMet + nextResponse.npcName).takeLast(2)
@@ -263,7 +287,7 @@ class GameViewModel @JvmOverloads constructor(
                 gameOverReason = gameOverReason,
                 lastResolutionText = resolutionReaction,
                 lastBridgeText = bridgeNarrative,
-                lastStatChanges = changes.copy(goldChange = netGoldChange),
+                lastStatChanges = changes.copy(goldChange = netGoldChange, healthChange = jitteredHealthChange),
                 lastChosenOptionText = option.text,
                 recentCharactersMet = updatedCharactersMet,
                 lastActionConsequenceSummary = consequenceSummary,
@@ -673,11 +697,21 @@ class GameViewModel @JvmOverloads constructor(
             var deckWorldUpdate: WorldState = world
 
             if (deckNode != null) {
-                response = EventDeck.buildNodeResponse(deckNode, world.selectedLanguage)
-                deckWorldUpdate = world.copy(
-                    currentNodeId = deckNode.id,
-                    visitedNodeIds = world.visitedNodeIds + deckNode.id
-                )
+                // Never displace a forced story/crisis beat with a bonus vignette - only ordinary
+                // sandbox turns are eligible, and only when the AI call actually succeeds.
+                val spiceResponse = if (!deckNode.forcedPriority && kotlin.random.Random.nextFloat() < SPICE_EVENT_CHANCE) {
+                    repository.getSpiceEvent(world)
+                } else null
+
+                if (spiceResponse != null) {
+                    response = spiceResponse
+                } else {
+                    response = EventDeck.buildNodeResponse(deckNode, world.selectedLanguage)
+                    deckWorldUpdate = world.copy(
+                        currentNodeId = deckNode.id,
+                        visitedNodeIds = world.visitedNodeIds + deckNode.id
+                    )
+                }
             } else {
                 response = repository.getNextEvent(world, chosenOptionText, anchorContext)
             }
@@ -697,5 +731,20 @@ class GameViewModel @JvmOverloads constructor(
 
             _isLoading.value = false
         }
+    }
+
+    /** Applies a small random jitter to a nonzero stat delta, preserving its sign. */
+    private fun jitterAmount(base: Int): Int {
+        if (base == 0) return 0
+        val factor = 1f + (kotlin.random.Random.nextFloat() * 2f - 1f) * CONSEQUENCE_JITTER
+        val jittered = (base * factor).toInt()
+        return if (jittered == 0) (if (base > 0) 1 else -1) else jittered
+    }
+
+    companion object {
+        /** Chance per eligible sandbox turn that an AI-generated bonus vignette replaces the usual authored pick. */
+        private const val SPICE_EVENT_CHANCE = 0.25f
+        /** Fractional jitter applied to authored gold/health deltas so repeat playthroughs of the same card don't feel numerically identical. */
+        private const val CONSEQUENCE_JITTER = 0.15f
     }
 }
