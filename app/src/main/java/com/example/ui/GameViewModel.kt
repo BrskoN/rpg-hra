@@ -22,7 +22,6 @@ import kotlinx.coroutines.launch
 import com.example.data.OriginSeed
 import com.example.data.StoryAnchor
 import com.example.data.EventDeck
-import com.example.data.NodeKind
 
 import com.example.data.AppLanguage
 
@@ -144,9 +143,10 @@ class GameViewModel @JvmOverloads constructor(
             val chosenDeckChoice = if (isDeckChoice) {
                 EventDeck.findChoice(option.sourceNodeId!!, option.sourceChoiceId!!)?.second
             } else null
+            val resolvedDeckConsequence = chosenDeckChoice?.resolve(currentWorld)
 
             val nextResponse = if (isDeckChoice) {
-                EventDeck.buildChoiceResolution(option.sourceNodeId!!, option.sourceChoiceId!!, currentWorld.selectedLanguage)
+                EventDeck.buildChoiceResolution(option.sourceNodeId!!, option.sourceChoiceId!!, currentWorld, currentWorld.selectedLanguage)
             } else {
                 repository.getNextEvent(currentWorld, option.text)
             }
@@ -170,6 +170,9 @@ class GameViewModel @JvmOverloads constructor(
 
             val updatedFlags = currentWorld.worldFlags.toMutableSet()
             updatedFlags.addAll(nextResponse.newWorldFlags)
+            if (resolvedDeckConsequence != null) {
+                updatedFlags.removeAll(resolvedDeckConsequence.removeFlags)
+            }
 
             if (!changes.statusEffect.isNullOrBlank()) {
                 updatedFlags.add(changes.statusEffect)
@@ -178,19 +181,23 @@ class GameViewModel @JvmOverloads constructor(
                 updatedFlags.add(changes.chapterFlag)
             }
 
-            val textLower = option.text.lowercase()
-            val tagLower = option.tag.lowercase()
-            when {
-                tagLower.contains("bailiff") || textLower.contains("bailiff") || tagLower.contains("combat") || textLower.contains("kill") ->
-                    updatedFlags.add("KILLED_BAILIFF")
-                tagLower.contains("royal") || textLower.contains("crown") || tagLower.contains("seal") ->
-                    updatedFlags.add("CROWN_FAVOR")
-                tagLower.contains("trade") || textLower.contains("guild") || tagLower.contains("market") ->
-                    updatedFlags.add("GUILD_MASTER")
-                tagLower.contains("holy") || textLower.contains("vow") || tagLower.contains("plea") ->
-                    updatedFlags.add("HOLY_CRUSADER")
-                tagLower.contains("hero") || textLower.contains("oakvale") ->
-                    updatedFlags.add("HERO_OF_OAKVALE")
+            // Legacy heuristic flag inference only applies to AI/offline-generated turns - deck-driven
+            // choices already carry their own precise, authored flags via ChoiceConsequence.addFlags.
+            if (!isDeckChoice) {
+                val textLower = option.text.lowercase()
+                val tagLower = option.tag.lowercase()
+                when {
+                    tagLower.contains("bailiff") || textLower.contains("bailiff") || tagLower.contains("combat") || textLower.contains("kill") ->
+                        updatedFlags.add("KILLED_BAILIFF")
+                    tagLower.contains("royal") || textLower.contains("crown") || tagLower.contains("seal") ->
+                        updatedFlags.add("CROWN_FAVOR")
+                    tagLower.contains("trade") || textLower.contains("guild") || tagLower.contains("market") ->
+                        updatedFlags.add("GUILD_MASTER")
+                    tagLower.contains("holy") || textLower.contains("vow") || tagLower.contains("plea") ->
+                        updatedFlags.add("HOLY_CRUSADER")
+                    tagLower.contains("hero") || textLower.contains("oakvale") ->
+                        updatedFlags.add("HERO_OF_OAKVALE")
+                }
             }
 
             var gameOver = false
@@ -262,7 +269,16 @@ class GameViewModel @JvmOverloads constructor(
                 currentActiveSceneContext = newActiveSceneContext,
                 currentActiveNpc = newActiveNpc,
                 activeSceneTurns = newSceneTurns,
-                pendingNodeId = if (isDeckChoice) chosenDeckChoice?.nextNodeId else currentWorld.pendingNodeId
+                inventoryItemIds = if (resolvedDeckConsequence != null)
+                    currentWorld.inventoryItemIds - resolvedDeckConsequence.removeItems + resolvedDeckConsequence.addItems
+                else currentWorld.inventoryItemIds,
+                hiddenInfluences = if (resolvedDeckConsequence != null)
+                    currentWorld.hiddenInfluences.toMutableMap().apply {
+                        resolvedDeckConsequence.influenceChanges.forEach { (key, delta) ->
+                            this[key] = ((this[key] ?: 0) + delta).coerceIn(0, 100)
+                        }
+                    }
+                else currentWorld.hiddenInfluences
             )
 
             _worldState.value = updatedWorld
@@ -319,6 +335,62 @@ class GameViewModel @JvmOverloads constructor(
 
     fun evaluateChapterEnd(): List<OriginClass> {
         val currentWorld = _worldState.value
+        return if (currentWorld.activeOrigin == OriginClass.PEASANT) {
+            evaluatePeasantChapterEnd(currentWorld)
+        } else {
+            evaluateLegacyChapterEnd(currentWorld)
+        }
+    }
+
+    /**
+     * Turn 25 climax evaluation matching the authored EventDeck's exact causal branches:
+     * Ascension / Neutral / Descension driven by the flags accumulated across Phases 1-3.
+     */
+    private fun evaluatePeasantChapterEnd(currentWorld: WorldState): List<OriginClass> {
+        val gold = currentWorld.gold
+        val notoriety = currentWorld.notoriety
+        val nobilityRep = currentWorld.factions[Faction.NOBILITY] ?: 50
+        val churchRep = currentWorld.factions[Faction.CHURCH] ?: 50
+        val flags = currentWorld.worldFlags
+
+        val isDescension = notoriety >= 80 || gold <= 0 ||
+                flags.contains("INCARCERATED_CRIMINAL") || flags.contains("BLOOD_ON_HANDS") || flags.contains("DESTITUTE_SURVIVOR")
+
+        if (isDescension) {
+            // Blocks all good options and forces punishment roles
+            return listOf(OriginClass.PRISONER, OriginClass.BEGGAR, OriginClass.OUTCAST)
+        }
+
+        val isAscension = gold >= 50 || nobilityRep >= 60 ||
+                flags.contains("MAN_AT_ARMS") || flags.contains("GUILD_PROTECTOR") || flags.contains("PEASANT_WARLORD")
+
+        val available = mutableListOf<OriginClass>()
+
+        if (isAscension) {
+            if (flags.contains("MAN_AT_ARMS") || flags.contains("ENFORCER_OF_TYRANNY")) {
+                available.add(OriginClass.SQUIRE)
+            }
+            if (flags.contains("SILVER_SMUGGLER") || flags.contains("GUILD_PROTECTOR")) {
+                available.add(OriginClass.GUILD_APPRENTICE)
+            }
+            if (flags.contains("PEASANT_WARLORD") || flags.contains("REBELLION_LEADER")) {
+                available.add(OriginClass.OUTLAW_KING)
+            }
+        }
+
+        if (available.isEmpty()) {
+            // Neutral / stagnation: average stats, no extreme deeds either way
+            available.add(OriginClass.PEASANT)
+            if (churchRep > 50 || flags.contains("CHURCH_PROPERTY")) {
+                available.add(OriginClass.ACOLYTE)
+            }
+        }
+
+        return available.distinct()
+    }
+
+    /** Legacy generic evaluation retained for origins not yet migrated to an authored EventDeck. */
+    private fun evaluateLegacyChapterEnd(currentWorld: WorldState): List<OriginClass> {
         val gold = currentWorld.gold
         val notoriety = currentWorld.notoriety
         val tension = currentWorld.regionalTension
@@ -405,8 +477,7 @@ class GameViewModel @JvmOverloads constructor(
             lastBridgeText = null,
             lastChosenOptionText = null,
             currentNodeId = null,
-            visitedNodeIds = emptySet(),
-            pendingNodeId = null
+            visitedNodeIds = emptySet()
         )
 
         _worldState.value = updatedWorld
@@ -450,13 +521,7 @@ class GameViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             _isLoading.value = true
 
-            val forcedNode = world.pendingNodeId?.let { EventDeck.findNode(it) }
-            val desiredKind = when {
-                world.turnCount == 1 -> NodeKind.OPENING
-                anchorContext != null -> NodeKind.ANCHOR
-                else -> NodeKind.SANDBOX
-            }
-            val deckNode = forcedNode ?: EventDeck.selectNode(world, desiredKind)
+            val deckNode = EventDeck.selectNode(world)
 
             val response: EventResponse
             var deckWorldUpdate: WorldState = world
@@ -465,8 +530,7 @@ class GameViewModel @JvmOverloads constructor(
                 response = EventDeck.buildNodeResponse(deckNode, world.selectedLanguage)
                 deckWorldUpdate = world.copy(
                     currentNodeId = deckNode.id,
-                    visitedNodeIds = world.visitedNodeIds + deckNode.id,
-                    pendingNodeId = null
+                    visitedNodeIds = world.visitedNodeIds + deckNode.id
                 )
             } else {
                 response = repository.getNextEvent(world, chosenOptionText, anchorContext)

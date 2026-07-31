@@ -71,6 +71,15 @@ data class OriginSeed(
             )
         )
 
+        val SQUIRE_SEEDS = listOf(
+            OriginSeed(
+                id = "squire_seed_oath",
+                originClass = OriginClass.SQUIRE,
+                seedTitle = "The Knight's Shadow",
+                seedPromptContext = "Assigned to serve a demanding knight, the player must prove worth before the war council while old peasant ties still pull at their conscience."
+            )
+        )
+
         val KNIGHT_SEEDS = listOf(
             OriginSeed(
                 id = "knight_seed_raiders",
@@ -139,6 +148,7 @@ data class OriginSeed(
                 OriginClass.PEASANT -> PEASANT_SEEDS
                 OriginClass.GUILD_APPRENTICE -> GUILD_SEEDS
                 OriginClass.ACOLYTE -> ACOLYTE_SEEDS
+                OriginClass.SQUIRE -> SQUIRE_SEEDS
                 OriginClass.KNIGHT -> KNIGHT_SEEDS
                 OriginClass.MASTER_MERCHANT -> MERCHANT_SEEDS
                 OriginClass.BISHOP -> BISHOP_SEEDS

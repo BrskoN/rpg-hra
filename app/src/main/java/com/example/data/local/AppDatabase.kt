@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [GameSaveEntity::class], version = 6, exportSchema = false)
+@Database(entities = [GameSaveEntity::class], version = 7, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun gameSaveDao(): GameSaveDao
 

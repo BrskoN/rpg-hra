@@ -36,6 +36,8 @@ data class GameSaveEntity(
     val currentActiveNpc: String? = null,
     val currentNodeId: String? = null,
     val visitedNodeIdsJson: String = "[]",
+    val inventoryItemIdsJson: String = "[]",
+    val hiddenInfluencesJson: String = "{}",
     val timestamp: Long = System.currentTimeMillis()
 ) {
     fun toWorldState(): WorldState {
@@ -92,6 +94,28 @@ data class GameSaveEntity(
             e.printStackTrace()
         }
 
+        val inventorySet = mutableSetOf<String>()
+        try {
+            val inventoryArr = JSONArray(inventoryItemIdsJson)
+            for (i in 0 until inventoryArr.length()) {
+                inventorySet.add(inventoryArr.getString(i))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        val influencesMap = mutableMapOf<String, Int>()
+        try {
+            val influencesObj = JSONObject(hiddenInfluencesJson)
+            val keys = influencesObj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                influencesMap[key] = influencesObj.optInt(key, 0)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         return WorldState(
             currentChapter = currentChapter,
             activeOrigin = origin,
@@ -115,7 +139,9 @@ data class GameSaveEntity(
             currentActiveSceneContext = currentActiveSceneContext,
             currentActiveNpc = currentActiveNpc,
             currentNodeId = currentNodeId,
-            visitedNodeIds = visitedNodesSet
+            visitedNodeIds = visitedNodesSet,
+            inventoryItemIds = inventorySet,
+            hiddenInfluences = influencesMap
         )
     }
 
@@ -134,6 +160,12 @@ data class GameSaveEntity(
 
             val visitedArr = JSONArray()
             state.visitedNodeIds.forEach { visitedArr.put(it) }
+
+            val inventoryArr = JSONArray()
+            state.inventoryItemIds.forEach { inventoryArr.put(it) }
+
+            val influencesObj = JSONObject()
+            state.hiddenInfluences.forEach { (key, value) -> influencesObj.put(key, value) }
 
             return GameSaveEntity(
                 id = 1,
@@ -159,7 +191,9 @@ data class GameSaveEntity(
                 currentActiveSceneContext = state.currentActiveSceneContext,
                 currentActiveNpc = state.currentActiveNpc,
                 currentNodeId = state.currentNodeId,
-                visitedNodeIdsJson = visitedArr.toString()
+                visitedNodeIdsJson = visitedArr.toString(),
+                inventoryItemIdsJson = inventoryArr.toString(),
+                hiddenInfluencesJson = influencesObj.toString()
             )
         }
     }

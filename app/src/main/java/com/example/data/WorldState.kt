@@ -106,6 +106,22 @@ enum class OriginClass(
         heraldicSymbol = "B",
         reqDescription = "Unlocked via Church >= 65 or 'HOLY_CRUSADER' / 'SACRED_VOW'"
     ),
+    SQUIRE(
+        title = "Squire",
+        subtitle = "Armed Retainer",
+        description = "A commoner raised into the Lord's household guard, trading the plow for a blade and a master's leash.",
+        baseGold = 40,
+        baseHealth = 105,
+        initialFactions = mapOf(
+            Faction.PEASANTS to 30,
+            Faction.CHURCH to 45,
+            Faction.NOBILITY to 70,
+            Faction.UNDERWORLD to 15,
+            Faction.GUILDS to 35
+        ),
+        heraldicSymbol = "⚔",
+        reqDescription = "Unlocked via 'MAN_AT_ARMS' or 'ENFORCER_OF_TYRANNY'"
+    ),
     OUTLAW_KING(
         title = "Shadow Monarch",
         subtitle = "Underworld Chieftain",
@@ -234,7 +250,10 @@ data class WorldState(
     val activeSceneTurns: Int = 0,
     val currentNodeId: String? = null,
     val visitedNodeIds: Set<String> = emptySet(),
-    val pendingNodeId: String? = null
+    /** Simple item-id ledger for EventDeck gating (e.g. "Forged_Pass", "Stolen_Relic"). */
+    val inventoryItemIds: Set<String> = emptySet(),
+    /** Hidden personal influence trackers distinct from faction reputation (e.g. "Underworld_Affinity", "Church_Grace"). */
+    val hiddenInfluences: Map<String, Int> = emptyMap()
 )
 
 fun OriginClass.getLocalizedTitle(lang: AppLanguage): String = when (lang) {
@@ -242,6 +261,7 @@ fun OriginClass.getLocalizedTitle(lang: AppLanguage): String = when (lang) {
         OriginClass.PEASANT -> "Roľník"
         OriginClass.GUILD_APPRENTICE -> "Cechový Učeň"
         OriginClass.ACOLYTE -> "Akolyt"
+        OriginClass.SQUIRE -> "Zbrojnoš"
         OriginClass.KNIGHT -> "Rytier Banneret"
         OriginClass.MASTER_MERCHANT -> "Cechmajster Kupiec"
         OriginClass.BISHOP -> "Vysoký Prelát"
@@ -258,6 +278,7 @@ fun OriginClass.getLocalizedSubtitle(lang: AppLanguage): String = when (lang) {
         OriginClass.PEASANT -> "Obyčajný Pracovník"
         OriginClass.GUILD_APPRENTICE -> "Remeselník a Obchodník"
         OriginClass.ACOLYTE -> "Svätý Zasvätenec"
+        OriginClass.SQUIRE -> "Ozbrojený Sluha Pána"
         OriginClass.KNIGHT -> "Rytiersky Pán"
         OriginClass.MASTER_MERCHANT -> "Patricij a Cechmajster"
         OriginClass.BISHOP -> "Katedrálny Duchovný"
@@ -274,6 +295,7 @@ fun OriginClass.getLocalizedDescription(lang: AppLanguage): String = when (lang)
         OriginClass.PEASANT -> "Prostý roľník so skromnými koreňmi, silnou vytrvalosťou a hlbokými väzbami na vidiecky ľud."
         OriginClass.GUILD_APPRENTICE -> "Remeselník zručný v výrobe, účtovných knihách, zmluvách a trhovom obchode."
         OriginClass.ACOLYTE -> "Zasvätenec vzdelaný v svätých písmach, katedrálnych rituáloch a svätých sľuboch."
+        OriginClass.SQUIRE -> "Poddaný povýšený do panskej domácej stráže, ktorý vymenil pluh za čepeľ a slobodu za pánov obojok."
         OriginClass.KNIGHT -> "Prísahou zviazaný šampión ríše, vládnuci vojenskou mocou a vysokým šľachtickým stavom."
         OriginClass.MASTER_MERCHANT -> "Bohatý patrón ovládajúci obchodné cesty, mestské práva a cechové spolky."
         OriginClass.BISHOP -> "Mocný cirkevný vodca s právomocami nad inkvizíciou a cirkevnými desiatkami."

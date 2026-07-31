@@ -214,7 +214,7 @@ private fun AscensionRoleCard(
     val description = origin.getLocalizedDescription(selectedLanguage)
 
     val isDescension = origin in listOf(OriginClass.PRISONER, OriginClass.BEGGAR, OriginClass.OUTCAST)
-    val isAscension = origin in listOf(OriginClass.KNIGHT, OriginClass.MASTER_MERCHANT, OriginClass.BISHOP, OriginClass.OUTLAW_KING)
+    val isAscension = origin in listOf(OriginClass.SQUIRE, OriginClass.KNIGHT, OriginClass.MASTER_MERCHANT, OriginClass.BISHOP, OriginClass.OUTLAW_KING)
 
     val borderColor = when {
         isAscension -> AgedGold
