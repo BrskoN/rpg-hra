@@ -108,6 +108,15 @@ fun NpcPortraitView(
                         shape = RoundedCornerShape(16.dp)
                     )
             ) {
+                // Archetype woodcut-silhouette watermark, behind the badge/initial/name content
+                ArchetypeSilhouette(
+                    archetype = npcArchetype,
+                    tint = archetypeInfo.badgeColor,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp, vertical = 12.dp)
+                )
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
