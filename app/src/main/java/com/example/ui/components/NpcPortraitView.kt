@@ -114,7 +114,7 @@ fun NpcPortraitView(
                     tint = archetypeInfo.badgeColor,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 24.dp, vertical = 12.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 )
 
                 Column(

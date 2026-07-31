@@ -19,7 +19,7 @@ fun ArchetypeSilhouette(
     archetype: String,
     tint: Color,
     modifier: Modifier = Modifier,
-    alpha: Float = 0.16f
+    alpha: Float = 0.55f
 ) {
     Canvas(modifier = modifier) {
         val w = size.width
