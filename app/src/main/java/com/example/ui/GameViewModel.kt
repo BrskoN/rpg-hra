@@ -115,7 +115,8 @@ class GameViewModel @JvmOverloads constructor(
             lastResolutionText = null,
             lastBridgeText = null,
             lastChosenOptionText = null,
-            isGameOver = false
+            isGameOver = false,
+            inventoryItemIds = if (origin == OriginClass.LESSER_NOBLE) setOf("Ancestral_Sword") else emptySet()
         )
         _worldState.value = initialWorld
         _isOriginSelected.value = true
@@ -339,8 +340,56 @@ class GameViewModel @JvmOverloads constructor(
             OriginClass.PEASANT -> evaluatePeasantChapterEnd(currentWorld)
             OriginClass.ACOLYTE -> evaluateAcolyteChapterEnd(currentWorld)
             OriginClass.GUILD_APPRENTICE -> evaluateGuildChapterEnd(currentWorld)
+            OriginClass.LESSER_NOBLE -> evaluateNobleChapterEnd(currentWorld)
             else -> evaluateLegacyChapterEnd(currentWorld)
         }
+    }
+
+    /**
+     * Turn 25 climax evaluation for the Lesser Noble EventDeck: Baron/Knight/Outlaw-King
+     * ascension, Lesser Noble/Guild Apprentice neutral stagnation, or
+     * Prisoner/Beggar/Outcast descension.
+     */
+    private fun evaluateNobleChapterEnd(currentWorld: WorldState): List<OriginClass> {
+        val gold = currentWorld.gold
+        val notoriety = currentWorld.notoriety
+        val nobilityRep = currentWorld.factions[Faction.NOBILITY] ?: 50
+        val underworldAffinity = currentWorld.hiddenInfluences["Underworld_Affinity"] ?: 0
+        val flags = currentWorld.worldFlags
+
+        val isDescension = notoriety >= 80 || gold <= 0 ||
+                flags.contains("LANDLESS_OUTLAW") || flags.contains("TRAITOR_TO_THE_CROWN") || flags.contains("HOMELESS_PATRICIAN")
+
+        if (isDescension) {
+            return listOf(OriginClass.PRISONER, OriginClass.BEGGAR, OriginClass.OUTCAST)
+        }
+
+        val isAscension = gold >= 100 || nobilityRep >= 70 ||
+                flags.contains("WAR_HERO") || flags.contains("CROWN_LOYALIST_NOBLE") ||
+                flags.contains("DEFENDER_OF_THE_REALM") || flags.contains("BLACKMAILER_NOBLE")
+
+        val available = mutableListOf<OriginClass>()
+
+        if (isAscension) {
+            if (flags.contains("WAR_HERO") || flags.contains("CROWN_LOYALIST_NOBLE")) {
+                available.add(OriginClass.BARON)
+            }
+            if (flags.contains("DEFENDER_OF_THE_REALM") || nobilityRep >= 70) {
+                available.add(OriginClass.KNIGHT)
+            }
+            if (flags.contains("REBEL_CONSPIRATOR") && underworldAffinity > 30) {
+                available.add(OriginClass.OUTLAW_KING)
+            }
+        }
+
+        if (available.isEmpty()) {
+            available.add(OriginClass.LESSER_NOBLE)
+            if (flags.contains("MERCHANT_MARRIAGE") || flags.contains("LEGALIST_NOBLE")) {
+                available.add(OriginClass.GUILD_APPRENTICE)
+            }
+        }
+
+        return available.distinct()
     }
 
     /**

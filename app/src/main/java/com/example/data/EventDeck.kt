@@ -155,10 +155,11 @@ object EventDeck {
         OriginClass.PEASANT -> PEASANT_NODES
         OriginClass.ACOLYTE -> ACOLYTE_NODES
         OriginClass.GUILD_APPRENTICE -> GUILD_NODES
+        OriginClass.LESSER_NOBLE -> NOBLE_NODES
         else -> emptyList()
     }
 
-    val ALL_NODES: List<EventNode> get() = PEASANT_NODES + ACOLYTE_NODES + GUILD_NODES
+    val ALL_NODES: List<EventNode> get() = PEASANT_NODES + ACOLYTE_NODES + GUILD_NODES + NOBLE_NODES
 
     // Hidden influence keys used across the deck.
     private const val REBEL_TRUST = "Rebel_Trust"
@@ -2328,6 +2329,631 @@ object EventDeck {
                         resolutionTextSk = "Na mape označíš rozpadávajúcu sa časť hradby a pod rúškom tmy ju odovzdáš obliehajúcemu kapitánovi.",
                         bridgeTextEn = "The blockade will end soon - one way or another, and by your hand.",
                         bridgeTextSk = "Blokáda čoskoro skončí - tak či onak, a tvojou rukou."
+                    )
+                )
+            )
+        )
+    )
+
+    // ---------------------------------------------------------------------
+    // LESSER NOBLE CHAPTER 1 DECK
+    // ---------------------------------------------------------------------
+    private val NOBLE_NODES: List<EventNode> = listOf(
+
+        // ============ PHASE 1: DEDINSKÉ SÍDLO A DLHY RODU (Ťahy 1-7) ============
+
+        EventNode(
+            id = "n1_ducal_levy",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.LESSER_NOBLE,
+            minTurn = 1, maxTurn = 1,
+            forcedPriority = true,
+            titleEn = "The Crumbling Keep and the Ducal Levy",
+            titleSk = "Zchátraná Tvrdz a Vojvodovský Odvod",
+            textEn = "The Duke's tax collector arrives with three men-at-arms at your courtyard. He demands 40 gold in annual liege tax, or two armed horses for the ducal guard. Your treasury is empty and the tower roof is collapsing.",
+            textSk = "Vojvodov vyberač daní dorazil s tromi zbrojnošmi na tvoj dvor. Žiada 40 zlatých ako ročnú lénnu daň alebo dvoch vyzbrojených koní do vojvodskej gardy. Tvoja pokladnica je prázdna a strecha na veži sa rozpadá.",
+            location = "Castle",
+            npcName = "Tax Collector Aldwin",
+            npcTitle = "Ducal Tax Collector",
+            npcArchetype = "NOBLE",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Pawn the ancestral sword to a city merchant and pay the tax", textSk = "Založiť rodový čestný meč u mestského kupca a zaplatiť daň",
+                    tagEn = "Mortgaged Honor", tagSk = "Založená Česť", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -10, goldChange = 30, factionChanges = mapOf(Faction.NOBILITY to 10),
+                        removeItems = setOf("Ancestral_Sword"),
+                        addFlags = setOf("MORTGAGED_HONOR"),
+                        resolutionTextEn = "The merchant's eyes gleam as your grandfather's blade crosses his counter for a sack of coin.",
+                        resolutionTextSk = "Kupcovi zažiaria oči, keď čepeľ tvojho starého otca prejde cez jeho pult výmenou za vrece mincí.",
+                        bridgeTextEn = "Aldwin counts the tax and departs, but the empty scabbard on your wall will haunt you.",
+                        bridgeTextSk = "Aldwin si prepočíta daň a odchádza, no prázdna pošva na tvojej stene ťa bude prenasledovať."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Wring the peasants dry, taking even their last seed grain", textSk = "Vyžmýkať poddaných a zobrať im aj posledné osivo na zaplatenie",
+                    tagEn = "Ruthless Landlord", tagSk = "Bezohľadný Pán", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 40, regionalTensionChange = 15, factionChanges = mapOf(Faction.PEASANTS to -35),
+                        addFlags = setOf("RUTHLESS_LANDLORD"),
+                        resolutionTextEn = "Your bailiffs pry the last grain sacks from weeping tenant hands as Aldwin counts the tally with satisfaction.",
+                        resolutionTextSk = "Tvoji drábi vytrhnú posledné vrecia obilia z plačúcich rúk nájomcov, kým Aldwin spokojne prepočítava sumu.",
+                        bridgeTextEn = "The tax is paid, but your fields will lie fallow and your people's hatred grows.",
+                        bridgeTextSk = "Daň je zaplatená, no tvoje polia ostanú neosiate a nenávisť tvojich poddaných rastie."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Challenge the collector to a knightly duel for insulting your name", textSk = "Vyzvať vyberača na rytiersky súboj na meče za urážku rodového mena",
+                    tagEn = "Duel", tagSk = "Súboj", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 20, regionalTensionChange = 20, healthChange = -15, goldChange = 30,
+                        addItems = setOf("Tax_Collector_Purse"),
+                        addFlags = setOf("DUEL_REBEL"),
+                        resolutionTextEn = "Steel rings against steel until Aldwin yields, his purse and pride both forfeit.",
+                        resolutionTextSk = "Oceľ zvoní o oceľ, kým Aldwin nevzdá, jeho mešec aj hrdosť prepadnú.",
+                        bridgeTextEn = "Word of a lord who duels the Duke's own collector will spread fast.",
+                        bridgeTextSk = "Chýr o pánovi, ktorý súbojuje s vojvodovým vlastným vyberačom, sa rýchlo rozšíri."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "n1_border_dispute",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.LESSER_NOBLE,
+            minTurn = 2, maxTurn = 5,
+            titleEn = "The Border Dispute with the Neighboring Baron",
+            titleSk = "Hraničný Spor so Susedným Barónom",
+            textEn = "Your powerful neighbor, Baron Ironhand, has moved boundary stones deep into your forests, and his gamekeeper shot one of your peasants.",
+            textSk = "Mocný sused, Barón Železnoruký, posunul hraničné kamene hlboko do tvojich lesov a jeho hájnik zastrelil tvojho poddaného.",
+            location = "Forest",
+            npcName = "Baron Ironhand",
+            npcTitle = "Neighboring Baron",
+            npcArchetype = "NOBLE",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "File a suit at the Royal Tribunal and await judgment", textSk = "Podať žalobu na Kráľovskom tribunále a čakať na súd",
+                    tagEn = "Legalism", tagSk = "Legalizmus", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -15, factionChanges = mapOf(Faction.NOBILITY to 15, Faction.CHURCH to 10),
+                        addFlags = setOf("LEGALIST_NOBLE"),
+                        resolutionTextEn = "The tribunal clerk accepts your suit with the same weary sigh he gives every border dispute.",
+                        resolutionTextSk = "Tribunálny pisár prijme tvoju žalobu s tým istým unaveným povzdychom ako pri každom hraničnom spore.",
+                        bridgeTextEn = "Justice moves slowly, but your name is noted as one who respects the law.",
+                        bridgeTextSk = "Spravodlivosť postupuje pomaly, no tvoje meno je zaznamenané ako meno niekoho, kto rešpektuje zákon."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Raid the Baron's herds by night and burn his mill", textSk = "Usporiadať nočný prepad na barónove stáda a spáliť jeho mlyn",
+                    tagEn = "Raid", tagSk = "Prepad", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 40, notorietyChange = 25, regionalTensionChange = 20, factionChanges = mapOf(Faction.NOBILITY to -20),
+                        addFlags = setOf("RAIDER_LORD"),
+                        resolutionTextEn = "Flames light the night sky as your men drive Ironhand's cattle back across the boundary stones.",
+                        resolutionTextSk = "Plamene osvetľujú nočnú oblohu, kým tvoji muži hnajú Železnorukého dobytok späť za hraničné kamene.",
+                        bridgeTextEn = "The Baron will know exactly whose hand struck this blow.",
+                        bridgeTextSk = "Barón bude presne vedieť, čia ruka zasadila tento úder."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Offer the Baron a quiet pact in exchange for a cut of his smuggling", textSk = "Ponúknuť barónovi tajný pakt výmenou za tajný podiel z jeho pašovania",
+                    tagEn = "Pact", tagSk = "Pakt", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 20, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 15), factionChanges = mapOf(Faction.PEASANTS to -15),
+                        addFlags = setOf("COMPLICIT_BARONET"),
+                        resolutionTextEn = "Ironhand's eyes narrow, then he extends a gloved hand - the boundary stones stay exactly where he placed them.",
+                        resolutionTextSk = "Železnorukému sa prižmúria oči, potom podá ruku v rukavici - hraničné kamene ostávajú presne tam, kam ich umiestnil.",
+                        bridgeTextEn = "A share of silver now flows quietly between your two houses.",
+                        bridgeTextSk = "Podiel striebra teraz potichu prúdi medzi vašimi dvoma domami."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "n1_poacher_trial",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.LESSER_NOBLE,
+            titleEn = "The Capital Trial of the Poacher",
+            titleSk = "Panský Hrdelný Súd nad Pytliakom",
+            textEn = "Your gamekeeper caught your best blacksmith poaching a stag in your forests. By law he must hang, but without the blacksmith your workshop will fail.",
+            textSk = "Tvoj hájnik chytil tvojho najlepšieho kováča pri pytliačení jeleňa v panských lesoch. Podľa zákona ho máš dať obesiť, ale bez kováča tvoja dielňa padne.",
+            location = "Village",
+            npcName = "Blacksmith Toman",
+            npcTitle = "Caught Poacher",
+            npcArchetype = "PEASANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Hang him without mercy, as a warning to the whole estate", textSk = "Nekompromisne ho dať obesiť na výstrahu celému panstvu",
+                    tagEn = "Tyranny", tagSk = "Tyrania", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.NOBILITY to 15, Faction.PEASANTS to -30),
+                        addFlags = setOf("STRICT_TYRANT"),
+                        resolutionTextEn = "Toman swings from the gallows tree as the assembled tenants watch in silent horror.",
+                        resolutionTextSk = "Toman visí na šibeničnom strome, kým zhromaždení nájomcovia sledujú v tichej hrôze.",
+                        bridgeTextEn = "Your workshop stands empty, but no one dares poach your forests again soon.",
+                        bridgeTextSk = "Tvoja dielňa stojí prázdna, no nikto sa tak skoro neodváži znovu pytliačiť v tvojich lesoch."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Grant mercy in exchange for a personal oath of bloody loyalty", textSk = "Udeliť mu milosť výmenou za osobnú prísahu krvavej vernosti",
+                    tagEn = "Mercy", tagSk = "Milosť", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.PEASANTS to 25, Faction.NOBILITY to -10),
+                        addItems = setOf("Loyal_Blacksmith"),
+                        addFlags = setOf("MERCIFUL_LORD"),
+                        resolutionTextEn = "Toman kneels and presses his forehead to your boot, swearing an oath older than the gallows rope.",
+                        resolutionTextSk = "Toman si kľakne a pritlačí čelo k tvojej čižme, skladajúc prísahu staršiu než šibeničný povraz.",
+                        bridgeTextEn = "Your workshop's fires burn on, and a blacksmith's loyalty is worth more than his neck.",
+                        bridgeTextSk = "Ohne tvojej dielne horia ďalej a kováčova vernosť je cennejšia než jeho krk."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Force him to pay a fine of his entire worth", textSk = "Prinútiť ho zaplatiť pokutu vo výške celého jeho majetku",
+                    tagEn = "Greed", tagSk = "Chamtivosť", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 35, factionChanges = mapOf(Faction.PEASANTS to -15),
+                        addFlags = setOf("GREEDY_FEUDAL"),
+                        resolutionTextEn = "Toman empties his savings onto your table, ruined but still breathing.",
+                        resolutionTextSk = "Toman vyprázdni svoje úspory na tvoj stôl, zruinovaný, no stále dýchajúci.",
+                        bridgeTextEn = "The workshop keeps its smith, though a poorer and more bitter one.",
+                        bridgeTextSk = "Dielňa si ponechá svojho kováča, hoci chudobnejšieho a zatrpknutejšieho."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "n1_tournament",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.LESSER_NOBLE,
+            condition = { it.gold >= 15 || it.worldFlags.contains("DUEL_REBEL") || it.worldFlags.contains("RAIDER_LORD") },
+            titleEn = "The Knightly Tournament in the County Town",
+            titleSk = "Rytiersky Turnaj v Krajskom Meste",
+            textEn = "The county duke has held a tournament. Victory in the lists brings 80 gold and noble glory, but defeat means lost armor and ransom.",
+            textSk = "Krajský vojvoda usporiadal turnaj. Výhra v drevovom klaní prináša 80 zlatých a panskú slávu, ale porážka znamená stratu zbroje a výkupné.",
+            location = "Castle",
+            npcName = "Tournament Marshal",
+            npcTitle = "County Tournament Official",
+            npcArchetype = "KNIGHT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Enter the lists and fight honorably for your family's name", textSk = "Vstúpiť do arény a bojovať poctivo za česť rodu",
+                    tagEn = "Honor", tagSk = "Česť", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -15, healthChange = -20, factionChanges = mapOf(Faction.NOBILITY to 30),
+                        resolutionTextEn = "You are unhorsed early, your armor dented and your pride bruised worse than your body.",
+                        resolutionTextSk = "Skoro ťa vyhodia zo sedla, tvoja zbroj je pomliaždená a tvoja hrdosť ešte viac než telo.",
+                        bridgeTextEn = "You limp from the lists having spent your entry fee for nothing but a lesson.",
+                        bridgeTextSk = "Krívajúc odchádzaš z arény, minúc svoje zápisné na nič iné než na lekciu."
+                    ),
+                    conditionalOutcome = { world ->
+                        if (world.health > 50) {
+                            ChoiceConsequence(
+                                goldChange = 65, factionChanges = mapOf(Faction.NOBILITY to 30),
+                                addFlags = setOf("TOURNAMENT_CHAMPION"),
+                                resolutionTextEn = "Lance splinters against shield as you unhorse your final opponent to a roaring crowd.",
+                                resolutionTextSk = "Kopija sa roztriešti o štít, kým vyhodíš zo sedla svojho posledného súpera pred jasajúcim davom.",
+                                bridgeTextEn = "The duke himself presents your prize purse before the assembled nobility.",
+                                bridgeTextSk = "Samotný vojvoda ti pred zhromaždenou šľachtou odovzdá výhernú mešec."
+                            )
+                        } else {
+                            ChoiceConsequence(
+                                goldChange = -15, healthChange = -20, factionChanges = mapOf(Faction.NOBILITY to 30),
+                                resolutionTextEn = "Wounded already, you are unhorsed early, your armor dented and pride bruised worse than your body.",
+                                resolutionTextSk = "Už zranený, skoro ťa vyhodia zo sedla, tvoja zbroj je pomliaždená a hrdosť ešte viac než telo.",
+                                bridgeTextEn = "You limp from the lists having spent your entry fee for nothing but a lesson.",
+                                bridgeTextSk = "Krívajúc odchádzaš z arény, minúc svoje zápisné na nič iné než na lekciu."
+                            )
+                        }
+                    }
+                ),
+                EventChoice(
+                    id = 2, textEn = "Bribe your first opponent's squire to cut his saddle straps", textSk = "Podplatiť paža tvojho prvého súpera, aby mu narezal remene na sedle",
+                    tagEn = "Cheating", tagSk = "Podvod", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 60, notorietyChange = 10, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 15),
+                        addFlags = setOf("CHEATING_KNIGHT"),
+                        resolutionTextEn = "Your opponent tumbles from his saddle before the first lance even connects, straps cut clean through.",
+                        resolutionTextSk = "Tvoj súper sa zošmykne zo sedla skôr, než sa prvá kopija vôbec dotkne, remene prerezané naskrz.",
+                        bridgeTextEn = "The crowd cheers your victory, unaware of the coin that bought it.",
+                        bridgeTextSk = "Dav jasá nad tvojím víťazstvom, netušiac o minci, ktorá ho kúpila."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Wager the entire ancestral estate with the moneylender on the favorite", textSk = "Staviť celé rodové sídlo u mestského úžerníka na víťazstvo favorita",
+                    tagEn = "Gambling", tagSk = "Hazard", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 60, factionChanges = mapOf(Faction.NOBILITY to -20),
+                        addFlags = setOf("GAMBLING_NOBLE"),
+                        resolutionTextEn = "The favorite's lance holds true through every pass, and the moneylender counts your winnings with a thin smile.",
+                        resolutionTextSk = "Favoritova kopija vydrží pri každom prejazde a úžerník s tenkým úsmevom prepočítava tvoju výhru.",
+                        bridgeTextEn = "Your estate remains yours - this time - but the moneylender remembers the wager.",
+                        bridgeTextSk = "Tvoje sídlo ostáva tvoje - tentokrát - no úžerník si tú stávku zapamätá."
+                    )
+                )
+            )
+        ),
+
+        // ============ PHASE 2: KRÁĽOVSKÝ DVOR A INTRIGY (Ťahy 8-16) ============
+
+        EventNode(
+            id = "n2_conspirator_messenger",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.LESSER_NOBLE,
+            minTurn = 8, maxTurn = 12,
+            titleEn = "The Secret Messenger of the Fled Count",
+            titleSk = "Tajný Posol Zdrhnutého Grófa",
+            textEn = "A rider in a dark cloak arrives at your keep at midnight, bearing the seal of a rebel noble league plotting a coup against the king. They offer you the title of Baron if you open your gates to their army.",
+            textSk = "Jazdec v tmavom plášti dorazil na tvoju tvrdz o polnoci. Nesie pečať rebelskej panskej ligy, ktorá pripravuje prevrat proti kráľovi. Ponúkajú ti titul Baróna, ak otvoríš brány tvojho panstva pre ich vojsko.",
+            location = "Castle",
+            npcName = "The Cloaked Rider",
+            npcTitle = "Conspiracy Messenger",
+            npcArchetype = "NOBLE",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Sign the blood oath and join the conspirators", textSk = "Podpísať krvavú prísahu a pridať sa k sprisahaniam",
+                    tagEn = "Conspiracy", tagSk = "Sprisahanie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 50, regionalTensionChange = 20, factionChanges = mapOf(Faction.NOBILITY to -30),
+                        addFlags = setOf("REBEL_CONSPIRATOR"),
+                        resolutionTextEn = "Your own blood seals the parchment as the rider vanishes back into the night with your oath.",
+                        resolutionTextSk = "Tvoja vlastná krv spečatí pergamen, kým jazdec zmizne späť do noci s tvojou prísahou.",
+                        bridgeTextEn = "You are now bound to a rebellion that may crown you - or hang you.",
+                        bridgeTextSk = "Teraz si viazaný povstaním, ktoré ťa môže korunovať - alebo obesiť."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Capture the messenger and hand him to the royal bailiff at once", textSk = "Zajať posla a okamžite ho odovzdať kráľovskému richtárovi",
+                    tagEn = "Loyalty", tagSk = "Vernosť", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 30, factionChanges = mapOf(Faction.NOBILITY to 35),
+                        addFlags = setOf("CROWN_LOYALIST_NOBLE"),
+                        resolutionTextEn = "Your men-at-arms drag the rider from his horse before he clears the drawbridge.",
+                        resolutionTextSk = "Tvoji zbrojnoši strhnú jazdca z koňa skôr, než prejde padací most.",
+                        bridgeTextEn = "The crown rewards your loyalty, and your name is spoken with new respect at court.",
+                        bridgeTextSk = "Koruna odmení tvoju vernosť a tvoje meno sa na dvore vyslovuje s novou úctou."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Kill the messenger, take the letters, and blackmail both sides", textSk = "Zabiť posla, spracovať listy a vydierať obidve strany",
+                    tagEn = "Double Agent", tagSk = "Dvojitý Agent", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 70, notorietyChange = 20, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 25),
+                        addItems = setOf("Conspiracy_Letters"),
+                        addFlags = setOf("DOUBLE_AGENT"),
+                        resolutionTextEn = "The rider falls silently in the courtyard shadows, his sealed letters now yours alone.",
+                        resolutionTextSk = "Jazdec potichu padne v tieňoch nádvoria, jeho zapečatené listy sú teraz len tvoje.",
+                        bridgeTextEn = "You now hold a secret worth a fortune to whichever side fears exposure more.",
+                        bridgeTextSk = "Teraz držíš tajomstvo, ktoré je pre tú stranu, čo sa viac bojí odhalenia, cenné ako celé bohatstvo."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "n2_peasant_revolt",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.LESSER_NOBLE,
+            condition = { it.regionalTension > 60 || it.worldFlags.contains("RUTHLESS_LANDLORD") || it.worldFlags.contains("STRICT_TYRANT") },
+            titleEn = "The Peasant Revolt in Your Own Courtyard",
+            titleSk = "Selská Vzbura na Vlastnom Nádvorí",
+            textEn = "A crowd of your own tenants, armed with scythes and pitchforks, has surrounded your keep. They have burned the granary and demand an end to corvee labor and forgiveness of debts.",
+            textSk = "Dav tvojich poddaných vyzbrojený kosami a vidlami obkľúčil tvoju tvrdz. Podpálili sýpku a žiadajú zrušenie roboty a odpustenie dlhov.",
+            location = "Castle",
+            npcName = "The Assembled Tenants",
+            npcTitle = "Revolt",
+            npcArchetype = "PEASANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Don your armor, mount your horse, and scatter the crowd with steel", textSk = "Obliecť zbroj, sadnúť na koňa a rozprášiť dav mečom",
+                    tagEn = "Suppression", tagSk = "Potlačenie", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -20, factionChanges = mapOf(Faction.NOBILITY to 10, Faction.PEASANTS to -50),
+                        addFlags = setOf("BLOODY_LORD"),
+                        resolutionTextEn = "Your blade cuts a bloody path through the tenant line until the survivors flee into the fields.",
+                        resolutionTextSk = "Tvoja čepeľ vysekáva krvavú cestu radom nájomcov, kým prežívší neutečú do polí.",
+                        bridgeTextEn = "The courtyard is yours again, littered with the price of your authority.",
+                        bridgeTextSk = "Nádvorie je znovu tvoje, poseiate cenou tvojej autority."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Step onto the balcony, negotiate, and halve the peasant dues", textSk = "Vystúpiť na balkón, vyjednávať a znížiť poddanské dávky o polovicu",
+                    tagEn = "Negotiation", tagSk = "Vyjednávanie", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -20, factionChanges = mapOf(Faction.PEASANTS to 30, Faction.NOBILITY to -20),
+                        addFlags = setOf("PEASANT_FRIEND"),
+                        resolutionTextEn = "Your voice carries over the crowd's roar, and the pitchforks slowly lower as terms are struck.",
+                        resolutionTextSk = "Tvoj hlas prenikne cez rev davu a vidly sa pomaly spúšťajú, kým sa dohodnú podmienky.",
+                        bridgeTextEn = "The granary still smolders, but the courtyard empties in peace.",
+                        bridgeTextSk = "Sýpka ešte doutieva, no nádvorie sa vyprázdňuje v mieri."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Pack the family treasure and flee through the secret passage to the town hall", textSk = "Zbaliť rodinný poklad a utiecť tajnou chodbou do mestskej radnice",
+                    tagEn = "Flight", tagSk = "Útek", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 30, factionChanges = mapOf(Faction.NOBILITY to -30),
+                        addFlags = setOf("HOMELESS_PATRICIAN"),
+                        resolutionTextEn = "You slip through the hidden passage as the mob's torches finally catch the tower roof behind you.",
+                        resolutionTextSk = "Prekĺzneš skrytou chodbou, kým fakle davu za tebou konečne zachytia strechu veže.",
+                        bridgeTextEn = "The keep burns to embers behind you, and you carry only what you could grab.",
+                        bridgeTextSk = "Tvrdz za tebou zhorí na popol a nesieš so sebou len to, čo si stihol zachytiť."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "n2_merchant_marriage",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.LESSER_NOBLE,
+            condition = { it.gold < 30 || it.worldFlags.contains("MORTGAGED_HONOR") },
+            titleEn = "The Dynastic Marriage to the Rich Merchant's Daughter",
+            titleSk = "Dynastický Sobáš s Dcérou Bohatého Kupca",
+            textEn = "A wealthy city guildmaster offers an enormous dowry - 100 gold - for his daughter's hand. But such a marriage will mark your bloodline with what the nobility calls 'dirty merchant blood'.",
+            textSk = "Bohatý cechmajster z mesta ti ponúka obrovské veno (100 zlatých) za svoju dcéru. Týmto sobášom však panská šľachta uvidí 'špinavú meštiansku krv' v tvojom rode.",
+            location = "Marketplace",
+            npcName = "Guildmaster Peronne",
+            npcTitle = "Wealthy Guildmaster",
+            npcArchetype = "MERCHANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Accept the marriage, take the 100 gold, and pay off every debt", textSk = "Prijať sobáš, zobrať 100 zlatých a splatiť všetky dlhy",
+                    tagEn = "Merchant Marriage", tagSk = "Kupecký Sobáš", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 100, factionChanges = mapOf(Faction.NOBILITY to -30, Faction.GUILDS to 20),
+                        addFlags = setOf("MERCHANT_MARRIAGE"),
+                        resolutionTextEn = "Peronne's coin chests are carried into your hall as the wedding contracts are signed and sealed.",
+                        resolutionTextSk = "Peronneho truhlice s mincami sú vnesené do tvojej siene, kým sú svadobné zmluvy podpísané a zapečatené.",
+                        bridgeTextEn = "Your debts vanish overnight, though whispered scorn follows your bride to every noble gathering.",
+                        bridgeTextSk = "Tvoje dlhy cez noc zmiznú, hoci šepkané opovrhnutie sprevádza tvoju nevestu na každom šľachtickom zhromaždení."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Heroically refuse the merchant blood and choose a poor baron's daughter instead", textSk = "Hrdinsky odmietnuť meštiansku krv a vybrať si chudobnú barónovu dcéru",
+                    tagEn = "Pure Blood", tagSk = "Čistá Krv", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -20, factionChanges = mapOf(Faction.NOBILITY to 30),
+                        addFlags = setOf("PURE_BLOOD_ARISTOCRAT"),
+                        resolutionTextEn = "Peronne's offer is declined with cold courtesy, and word spreads of your unshaken noble pride.",
+                        resolutionTextSk = "Peronneho ponuka je odmietnutá s chladnou zdvorilosťou a šíri sa chýr o tvojej neochvejnej šľachtickej hrdosti.",
+                        bridgeTextEn = "Your debts remain, but your bloodline stays untainted in the eyes of your peers.",
+                        bridgeTextSk = "Tvoje dlhy ostávajú, no tvoj rod zostáva v očiach tvojich vrstovníkov nepoškvrnený."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Take the dowry deposit and flee from the altar", textSk = "Zobrať zálohu na veno a utiecť z oltára",
+                    tagEn = "Runaway", tagSk = "Útek", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 50, notorietyChange = 30, factionChanges = mapOf(Faction.GUILDS to -40),
+                        addFlags = setOf("DISHONORED_RUNAWAY"),
+                        resolutionTextEn = "You pocket the deposit and vanish through the chapel's side door before the vows are ever spoken.",
+                        resolutionTextSk = "Schováš si zálohu a zmizneš bočnými dverami kaplnky skôr, než sa vôbec vyslovia sľuby.",
+                        bridgeTextEn = "Peronne's fury will follow you, and the guild will not forget this insult.",
+                        bridgeTextSk = "Peronneho zúrivosť ťa bude sledovať a cech na túto urážku nezabudne."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "n2_royal_levy",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.LESSER_NOBLE,
+            minTurn = 14, maxTurn = 16,
+            forcedPriority = true,
+            titleEn = "The Royal Levy for the Border War",
+            titleSk = "Kráľovský Odvod do Pohraničnej Vojny",
+            textEn = "The royal herald has sounded his horn before your gate. The King calls all lesser nobles and knights to arms against an invasion from the east.",
+            textSk = "Kráľovský herold zatrúbil pred bránou. Kráľ vyzýva všetkých zemanov a rytierov do zbrane proti invázii z východu.",
+            location = "Castle",
+            npcName = "Royal Herald",
+            npcTitle = "King's Herald",
+            npcArchetype = "KNIGHT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Lead your men-at-arms in the front line of the royal cavalry", textSk = "Viesť svojich zbrojnošov v prvej línii kráľovskej jazdy",
+                    tagEn = "War Hero", tagSk = "Vojnový Hrdina", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -30, factionChanges = mapOf(Faction.NOBILITY to 40),
+                        addFlags = setOf("WAR_HERO"),
+                        resolutionTextEn = "You ride at the vanguard through the border passes, blade raised against the invading host.",
+                        resolutionTextSk = "Jazdíš na čele cez pohraničné priesmyky, čepeľ zdvihnutá proti vpádajúcemu vojsku.",
+                        bridgeTextEn = "You return scarred but celebrated, your name now spoken among the realm's defenders.",
+                        bridgeTextSk = "Vraciaš sa zjazvený, no oslavovaný, tvoje meno sa teraz spomína medzi obrancami ríše."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Pay the shield-tax (scutage) and remain home at the estate", textSk = "Zaplatiť \"štítnu daň\" (scutage) a zostať doma na panstve",
+                    tagEn = "Scutage", tagSk = "Štítna Daň", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -40, factionChanges = mapOf(Faction.NOBILITY to -15),
+                        addFlags = setOf("COWARDLY_NOBLE"),
+                        resolutionTextEn = "The herald accepts your gold with a thin, disapproving nod and rides on to the next estate.",
+                        resolutionTextSk = "Herold prijme tvoje zlato s tenkým, neschvaľujúcim prikývnutím a odcvála na ďalšie panstvo.",
+                        bridgeTextEn = "You avoid the border war entirely, at the cost of whispered cowardice.",
+                        bridgeTextSk = "Vyhneš sa pohraničnej vojne úplne, za cenu šepkanej zbabelosti."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Send a peasant dressed in your own armor in your place", textSk = "Poslať namiesto seba poddaného oblečeného v tvojej zbroji",
+                    tagEn = "Fraud", tagSk = "Podvod", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 20, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 10),
+                        addFlags = setOf("FRAUDULENT_KNIGHT"),
+                        resolutionTextEn = "Your armor rides off to war on a stranger's shoulders while you remain safely behind your walls.",
+                        resolutionTextSk = "Tvoja zbroj odchádza do vojny na pleciach cudzinca, kým ty zostávaš bezpečne za svojimi múrmi.",
+                        bridgeTextEn = "If anyone discovers the deception, your name will never recover.",
+                        bridgeTextSk = "Ak niekto odhalí ten podvod, tvoje meno sa už nikdy nespamätá."
+                    )
+                )
+            )
+        ),
+
+        // ============ PHASE 3: FEUDÁLNY KLIMAX A ZÚČTOVANIE (Ťahy 17-25) ============
+
+        EventNode(
+            id = "n3_siege",
+            phase = EventPhase.PHASE_3,
+            originClass = OriginClass.LESSER_NOBLE,
+            minTurn = 17, maxTurn = 24,
+            forcedPriority = true,
+            condition = { it.regionalTension > 70 || it.worldFlags.contains("REBEL_CONSPIRATOR") || it.worldFlags.contains("DUEL_REBEL") },
+            titleEn = "The Siege of the Ancestral Keep",
+            titleSk = "Obliehanie Rodovej Tvrdze",
+            textEn = "The royal army - or Baron Ironhand's own host - has surrounded your keep. Catapults batter the walls and a battering ram splinters the gate.",
+            textSk = "Kráľovské vojsko (alebo vojsko Baróna Železnorukého) obkľúčilo tvoju tvrdz. Katapulty bijú do hradieb a baranidlo rozbíja bránu.",
+            location = "Castle",
+            npcName = "Siege Commander",
+            npcTitle = "Besieging Commander",
+            npcArchetype = "KNIGHT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Defend the walls to the last drop of blood with your loyal men-at-arms", textSk = "Brániť hradby do poslednej kvapky krvi s vernými zbrojnošmi",
+                    tagEn = "Last Stand", tagSk = "Posledná Obrana", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -50,
+                        resolutionTextEn = "Weakened already, your defense crumbles alongside the outer wall, and the gate finally gives way.",
+                        resolutionTextSk = "Už oslabený, tvoja obrana sa zrúti spolu s vonkajším múrom a brána napokon povolí.",
+                        bridgeTextEn = "The siege ends not in glory, but in your own exhaustion.",
+                        bridgeTextSk = "Obliehanie sa nekončí slávou, ale tvojím vlastným vyčerpaním."
+                    ),
+                    conditionalOutcome = { world ->
+                        if (world.health >= 40) {
+                            ChoiceConsequence(
+                                healthChange = -30, factionChanges = mapOf(Faction.NOBILITY to 40),
+                                addFlags = setOf("DEFENDER_OF_THE_REALM"),
+                                resolutionTextEn = "Your men hold the breach through three brutal assaults until the besiegers finally withdraw at dawn.",
+                                resolutionTextSk = "Tvoji muži udržia prielom cez tri brutálne útoky, kým sa obliehatelia napokon za úsvitu nestiahnu.",
+                                bridgeTextEn = "The keep stands, battered but unbroken, and your name is sung as its defender.",
+                                bridgeTextSk = "Tvrdz stojí, dobitá, no nezlomená, a tvoje meno sa spieva ako jej obranca."
+                            )
+                        } else {
+                            ChoiceConsequence(
+                                healthChange = -50,
+                                resolutionTextEn = "Weakened already, your defense crumbles alongside the outer wall, and the gate finally gives way.",
+                                resolutionTextSk = "Už oslabený, tvoja obrana sa zrúti spolu s vonkajším múrom a brána napokon povolí.",
+                                bridgeTextEn = "The siege ends not in glory, but in your own exhaustion.",
+                                bridgeTextSk = "Obliehanie sa nekončí slávou, ale tvojím vlastným vyčerpaním."
+                            )
+                        }
+                    }
+                ),
+                EventChoice(
+                    id = 2, textEn = "Open the gate, surrender the conspirators, and beg royal mercy", textSk = "Otvoriť bránu, vydať sprisahancov a prosiť o kráľovskú milosť",
+                    tagEn = "Surrender", tagSk = "Kapitulácia", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 20, factionChanges = mapOf(Faction.NOBILITY to -50),
+                        addFlags = setOf("SURRENDERED_NOBLE"),
+                        resolutionTextEn = "The gate swings open and your co-conspirators are dragged out in chains as the siege lines part.",
+                        resolutionTextSk = "Brána sa otvorí a tvoji spolusprisahanci sú vyvlečení v reťaziach, kým sa obliehacie línie rozostúpia.",
+                        bridgeTextEn = "Your keep is spared, but your name is forever marked as one who yielded.",
+                        bridgeTextSk = "Tvoja tvrdz je ušetrená, no tvoje meno je navždy poznačené ako meno toho, kto sa vzdal."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Burn your own keep and flee disguised as a servant into the woods", textSk = "Podpáliť vlastnú tvrdz a utiecť v prevlečení za sluhu do lesov",
+                    tagEn = "Scorched Earth", tagSk = "Spálená Zem", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -9999, notorietyChange = 30,
+                        addFlags = setOf("LANDLESS_OUTLAW"),
+                        resolutionTextEn = "Flames consume your ancestral halls behind you as you slip past the siege lines in a servant's rags.",
+                        resolutionTextSk = "Plamene za tebou strávia rodové siene, kým prekĺzneš popri obliehacích líniách v sluhových handrách.",
+                        bridgeTextEn = "Everything your family built is now ash, and you carry only your bare life.",
+                        bridgeTextSk = "Všetko, čo tvoja rodina vybudovala, je teraz popol a nesieš si len holý život."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "n3_confiscation_court",
+            phase = EventPhase.PHASE_3,
+            originClass = OriginClass.LESSER_NOBLE,
+            condition = { it.notoriety > 70 || it.worldFlags.contains("CHEATING_KNIGHT") || it.worldFlags.contains("DISHONORED_RUNAWAY") || it.worldFlags.contains("FRAUDULENT_KNIGHT") },
+            titleEn = "The Royal Court of Confiscation",
+            titleSk = "Kráľovský Konfiškačný Súd",
+            textEn = "The royal palatine reads out a list of your crimes, debts, and frauds before the assembled noble diet. He demands the stripping of your title and confiscation of your ancestral estate.",
+            textSk = "Kráľovský palatín pred celým panským snom číta zoznam tvojich zločinov, dlhov a podvodov. Žiada odobranie tvojho šľachtického titulu a konfiškáciu rodového majetku.",
+            location = "Castle",
+            npcName = "Palatine Aurelius",
+            npcTitle = "Royal Palatine",
+            npcArchetype = "NOBLE",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Bribe the palatine with family jewels and threaten him with conspiracy exposure", textSk = "Podplatiť palatína rodovými šperkami a vyhroziť mu sprisahaním",
+                    tagEn = "Bribe", tagSk = "Úplatok", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 10,
+                        resolutionTextEn = "You have no jewels of worth left to offer, and Aurelius's expression only hardens further.",
+                        resolutionTextSk = "Nemáš žiadne cenné šperky na ponuku a Aureliov výraz sa len ešte viac zatvrdí.",
+                        bridgeTextEn = "An empty hand before the palatine only confirms your ruin.",
+                        bridgeTextSk = "Prázdna ruka pred palatínom len potvrdí tvoj úpadok."
+                    ),
+                    conditionalOutcome = { world ->
+                        if (world.gold >= 60) {
+                            ChoiceConsequence(
+                                goldChange = -60, notorietyChange = -30,
+                                addFlags = setOf("CORRUPTED_PALATINE"),
+                                resolutionTextEn = "The jewels vanish into Aurelius's sleeve, and the reading of charges quietly stops mid-sentence.",
+                                resolutionTextSk = "Šperky zmiznú v Aureliovom rukáve a čítanie obvinení sa potichu zastaví uprostred vety.",
+                                bridgeTextEn = "The diet murmurs at the sudden end of proceedings, but no one questions the palatine.",
+                                bridgeTextSk = "Snem zamrmle nad náhlym koncom pojednávania, no nikto sa palatína nepýta."
+                            )
+                        } else {
+                            ChoiceConsequence(
+                                notorietyChange = 10,
+                                resolutionTextEn = "You have no jewels of worth left to offer, and Aurelius's expression only hardens further.",
+                                resolutionTextSk = "Nemáš žiadne cenné šperky na ponuku a Aureliov výraz sa len ešte viac zatvrdí.",
+                                bridgeTextEn = "An empty hand before the palatine only confirms your ruin.",
+                                bridgeTextSk = "Prázdna ruka pred palatínom len potvrdí tvoj úpadok."
+                            )
+                        }
+                    }
+                ),
+                EventChoice(
+                    id = 2, textEn = "Use the Conspiracy Letters to threaten exposing the whole court", textSk = "Použiť Conspiracy_Letters a vyhrážať sa odhalením celého dvora",
+                    tagEn = "Blackmail", tagSk = "Vydieranie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 10,
+                        resolutionTextEn = "You have no leverage to threaten the court with, and the reading of charges continues unabated.",
+                        resolutionTextSk = "Nemáš žiadnu páku, ktorou by si vyhrážal dvoru, a čítanie obvinení pokračuje bez prerušenia.",
+                        bridgeTextEn = "Empty threats before the diet only deepen your disgrace.",
+                        bridgeTextSk = "Prázdne vyhrážky pred snemom len prehlbujú tvoju hanbu."
+                    ),
+                    conditionalOutcome = { world ->
+                        if (world.inventoryItemIds.contains("Conspiracy_Letters")) {
+                            ChoiceConsequence(
+                                addFlags = setOf("BLACKMAILER_NOBLE"),
+                                removeItems = setOf("Conspiracy_Letters"),
+                                resolutionTextEn = "Aurelius pales as you name the sealed letters aloud, and the trial is dismissed on the spot.",
+                                resolutionTextSk = "Aurelius zbledne, keď nahlas spomenieš zapečatené listy, a súd je na mieste zrušený.",
+                                bridgeTextEn = "Half the diet suddenly finds urgent business elsewhere.",
+                                bridgeTextSk = "Polovica snemu si zrazu nájde naliehavú prácu inde."
+                            )
+                        } else {
+                            ChoiceConsequence(
+                                notorietyChange = 10,
+                                resolutionTextEn = "You have no leverage to threaten the court with, and the reading of charges continues unabated.",
+                                resolutionTextSk = "Nemáš žiadnu páku, ktorou by si vyhrážal dvoru, a čítanie obvinení pokračuje bez prerušenia.",
+                                bridgeTextEn = "Empty threats before the diet only deepen your disgrace.",
+                                bridgeTextSk = "Prázdne vyhrážky pred snemom len prehlbujú tvoju hanbu."
+                            )
+                        }
+                    }
+                ),
+                EventChoice(
+                    id = 3, textEn = "Draw your sword on the palatine and accept a traitor's fate", textSk = "Vytiahnuť meč na palatína a prijať osud zradcu",
+                    tagEn = "Defiance", tagSk = "Vzdor", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        regionalTensionChange = 50, notorietyChange = 40,
+                        addFlags = setOf("TRAITOR_TO_THE_CROWN"),
+                        resolutionTextEn = "Steel rings against the marble floor as guards swarm from every archway of the great hall.",
+                        resolutionTextSk = "Oceľ zazvoní o mramorovú podlahu, kým sa stráže vyrojí z každého oblúka veľkej siene.",
+                        bridgeTextEn = "There is no title left to strip - only a sentence left to pass.",
+                        bridgeTextSk = "Neostáva žiadny titul na odobratie - len rozsudok na vynesenie."
                     )
                 )
             )

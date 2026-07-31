@@ -61,7 +61,7 @@ fun OriginSelectionScreen(
     onContinueLegacy: () -> Unit = {},
     selectedLanguage: AppLanguage = AppLanguage.SLOVAK,
     onLanguageSelected: (AppLanguage) -> Unit = {},
-    availableOrigins: List<OriginClass> = listOf(OriginClass.PEASANT, OriginClass.GUILD_APPRENTICE, OriginClass.ACOLYTE)
+    availableOrigins: List<OriginClass> = listOf(OriginClass.PEASANT, OriginClass.GUILD_APPRENTICE, OriginClass.ACOLYTE, OriginClass.LESSER_NOBLE)
 ) {
     val scrollState = rememberScrollState()
 

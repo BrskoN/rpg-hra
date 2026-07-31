@@ -58,6 +58,38 @@ enum class OriginClass(
         heraldicSymbol = "A",
         reqDescription = "Standard Origin"
     ),
+    LESSER_NOBLE(
+        title = "Lesser Noble",
+        subtitle = "Landed Baronet",
+        description = "An impoverished hereditary lord clinging to a crumbling keep, a mountain of debt, and a title with no coin behind it.",
+        baseGold = 10,
+        baseHealth = 100,
+        initialFactions = mapOf(
+            Faction.PEASANTS to 35,
+            Faction.CHURCH to 45,
+            Faction.NOBILITY to 65,
+            Faction.UNDERWORLD to 20,
+            Faction.GUILDS to 35
+        ),
+        heraldicSymbol = "🏰",
+        reqDescription = "Standard Origin"
+    ),
+    BARON(
+        title = "Baron",
+        subtitle = "Lord of the Fief",
+        description = "A vassal lord granted fief and feudal authority after grand service to the crown - or ruthless ambition.",
+        baseGold = 90,
+        baseHealth = 115,
+        initialFactions = mapOf(
+            Faction.PEASANTS to 30,
+            Faction.CHURCH to 55,
+            Faction.NOBILITY to 85,
+            Faction.UNDERWORLD to 15,
+            Faction.GUILDS to 45
+        ),
+        heraldicSymbol = "🛡️",
+        reqDescription = "Unlocked via 'WAR_HERO' or 'CROWN_LOYALIST_NOBLE'"
+    ),
     KNIGHT(
         title = "Knight Banneret",
         subtitle = "Chivalric Lord",
@@ -261,6 +293,8 @@ fun OriginClass.getLocalizedTitle(lang: AppLanguage): String = when (lang) {
         OriginClass.PEASANT -> "Roľník"
         OriginClass.GUILD_APPRENTICE -> "Cechový Učeň"
         OriginClass.ACOLYTE -> "Akolyt"
+        OriginClass.LESSER_NOBLE -> "Nízky Šľachtic"
+        OriginClass.BARON -> "Barón"
         OriginClass.SQUIRE -> "Zbrojnoš"
         OriginClass.KNIGHT -> "Rytier Banneret"
         OriginClass.MASTER_MERCHANT -> "Cechmajster Kupiec"
@@ -278,6 +312,8 @@ fun OriginClass.getLocalizedSubtitle(lang: AppLanguage): String = when (lang) {
         OriginClass.PEASANT -> "Obyčajný Pracovník"
         OriginClass.GUILD_APPRENTICE -> "Remeselník a Obchodník"
         OriginClass.ACOLYTE -> "Svätý Zasvätenec"
+        OriginClass.LESSER_NOBLE -> "Zeman na Panstve"
+        OriginClass.BARON -> "Lénny Pán"
         OriginClass.SQUIRE -> "Ozbrojený Sluha Pána"
         OriginClass.KNIGHT -> "Rytiersky Pán"
         OriginClass.MASTER_MERCHANT -> "Patricij a Cechmajster"
@@ -295,6 +331,8 @@ fun OriginClass.getLocalizedDescription(lang: AppLanguage): String = when (lang)
         OriginClass.PEASANT -> "Prostý roľník so skromnými koreňmi, silnou vytrvalosťou a hlbokými väzbami na vidiecky ľud."
         OriginClass.GUILD_APPRENTICE -> "Remeselník zručný v výrobe, účtovných knihách, zmluvách a trhovom obchode."
         OriginClass.ACOLYTE -> "Zasvätenec vzdelaný v svätých písmach, katedrálnych rituáloch a svätých sľuboch."
+        OriginClass.LESSER_NOBLE -> "Zubožený dedičný pán lipnúci na rozpadávajúcej sa tvrdzi, hore dlhov po uši a titule bez jedinej mince za ním."
+        OriginClass.BARON -> "Vazalský pán, ktorému bolo udelené léno a feudálna právomoc po veľkých zásluhách kráľovi - alebo bezohľadnej ctižiadosti."
         OriginClass.SQUIRE -> "Poddaný povýšený do panskej domácej stráže, ktorý vymenil pluh za čepeľ a slobodu za pánov obojok."
         OriginClass.KNIGHT -> "Prísahou zviazaný šampión ríše, vládnuci vojenskou mocou a vysokým šľachtickým stavom."
         OriginClass.MASTER_MERCHANT -> "Bohatý patrón ovládajúci obchodné cesty, mestské práva a cechové spolky."

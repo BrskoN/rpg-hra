@@ -71,6 +71,24 @@ data class OriginSeed(
             )
         )
 
+        val LESSER_NOBLE_SEEDS = listOf(
+            OriginSeed(
+                id = "noble_seed_levy",
+                originClass = OriginClass.LESSER_NOBLE,
+                seedTitle = "The Crumbling Keep and the Ducal Levy",
+                seedPromptContext = "The duke's tax collector arrives at the crumbling ancestral keep demanding coin or armed knights the impoverished lord cannot afford."
+            )
+        )
+
+        val BARON_SEEDS = listOf(
+            OriginSeed(
+                id = "baron_seed_fief",
+                originClass = OriginClass.BARON,
+                seedTitle = "The New Fief's Unrest",
+                seedPromptContext = "Newly granted a fief and title, the baron must win the loyalty of restless vassals who remember the previous lord's rule."
+            )
+        )
+
         val SQUIRE_SEEDS = listOf(
             OriginSeed(
                 id = "squire_seed_oath",
@@ -148,6 +166,8 @@ data class OriginSeed(
                 OriginClass.PEASANT -> PEASANT_SEEDS
                 OriginClass.GUILD_APPRENTICE -> GUILD_SEEDS
                 OriginClass.ACOLYTE -> ACOLYTE_SEEDS
+                OriginClass.LESSER_NOBLE -> LESSER_NOBLE_SEEDS
+                OriginClass.BARON -> BARON_SEEDS
                 OriginClass.SQUIRE -> SQUIRE_SEEDS
                 OriginClass.KNIGHT -> KNIGHT_SEEDS
                 OriginClass.MASTER_MERCHANT -> MERCHANT_SEEDS
