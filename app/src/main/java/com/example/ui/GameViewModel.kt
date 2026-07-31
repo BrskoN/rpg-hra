@@ -338,8 +338,58 @@ class GameViewModel @JvmOverloads constructor(
         return when (currentWorld.activeOrigin) {
             OriginClass.PEASANT -> evaluatePeasantChapterEnd(currentWorld)
             OriginClass.ACOLYTE -> evaluateAcolyteChapterEnd(currentWorld)
+            OriginClass.GUILD_APPRENTICE -> evaluateGuildChapterEnd(currentWorld)
             else -> evaluateLegacyChapterEnd(currentWorld)
         }
+    }
+
+    /**
+     * Turn 25 climax evaluation for the Guild Apprentice EventDeck: Master Merchant/Knight/
+     * Outlaw-King ascension, Guild Apprentice/Acolyte neutral stagnation, or
+     * Prisoner/Beggar/Outcast descension.
+     */
+    private fun evaluateGuildChapterEnd(currentWorld: WorldState): List<OriginClass> {
+        val gold = currentWorld.gold
+        val notoriety = currentWorld.notoriety
+        val guildsRep = currentWorld.factions[Faction.GUILDS] ?: 50
+        val nobilityRep = currentWorld.factions[Faction.NOBILITY] ?: 50
+        val churchRep = currentWorld.factions[Faction.CHURCH] ?: 50
+        val underworldAffinity = currentWorld.hiddenInfluences["Underworld_Affinity"] ?: 0
+        val flags = currentWorld.worldFlags
+
+        val isDescension = notoriety >= 80 || gold <= 0 ||
+                flags.contains("WAREHOUSE_BETRAYER") || flags.contains("SEWER_RAT") || flags.contains("CITY_TRAITOR")
+
+        if (isDescension) {
+            return listOf(OriginClass.PRISONER, OriginClass.BEGGAR, OriginClass.OUTCAST)
+        }
+
+        val isAscension = gold >= 80 || guildsRep >= 60 || nobilityRep >= 60 ||
+                flags.contains("MONOPOLIST") || flags.contains("GUILD_BENEFACTOR") ||
+                flags.contains("BRIBED_JUDGE") || flags.contains("PATRICIAN_TOOL")
+
+        val available = mutableListOf<OriginClass>()
+
+        if (isAscension) {
+            if (flags.contains("MONOPOLIST") || flags.contains("GUILD_BENEFACTOR") || flags.contains("BRIBED_JUDGE")) {
+                available.add(OriginClass.MASTER_MERCHANT)
+            }
+            if (flags.contains("PATRICIAN_TOOL") || nobilityRep >= 60) {
+                available.add(OriginClass.KNIGHT)
+            }
+            if ((flags.contains("PEOPLE_TRIBUNE") || flags.contains("WAR_PROFITEEER")) && underworldAffinity > 30) {
+                available.add(OriginClass.OUTLAW_KING)
+            }
+        }
+
+        if (available.isEmpty()) {
+            available.add(OriginClass.GUILD_APPRENTICE)
+            if (flags.contains("FORGER") || churchRep > 50) {
+                available.add(OriginClass.ACOLYTE)
+            }
+        }
+
+        return available.distinct()
     }
 
     /**

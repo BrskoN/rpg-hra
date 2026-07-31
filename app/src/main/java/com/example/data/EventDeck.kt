@@ -154,10 +154,11 @@ object EventDeck {
     private fun nodesForOrigin(origin: OriginClass): List<EventNode> = when (origin) {
         OriginClass.PEASANT -> PEASANT_NODES
         OriginClass.ACOLYTE -> ACOLYTE_NODES
+        OriginClass.GUILD_APPRENTICE -> GUILD_NODES
         else -> emptyList()
     }
 
-    val ALL_NODES: List<EventNode> get() = PEASANT_NODES + ACOLYTE_NODES
+    val ALL_NODES: List<EventNode> get() = PEASANT_NODES + ACOLYTE_NODES + GUILD_NODES
 
     // Hidden influence keys used across the deck.
     private const val REBEL_TRUST = "Rebel_Trust"
@@ -1713,6 +1714,620 @@ object EventDeck {
                         resolutionTextSk = "Železné brány so zaskrípaním zapadnú a zapečatia mor aj bratstvo spolu za tebou.",
                         bridgeTextEn = "The manor praises your caution. The dead behind the gates have no voice to disagree.",
                         bridgeTextSk = "Panstvo chváli tvoju opatrnosť. Mŕtvi za bránami nemajú hlas na to, aby nesúhlasili."
+                    )
+                )
+            )
+        )
+    )
+
+    // ---------------------------------------------------------------------
+    // GUILD APPRENTICE CHAPTER 1 DECK
+    // ---------------------------------------------------------------------
+    private val GUILD_NODES: List<EventNode> = listOf(
+
+        // ============ PHASE 1: MESTSKÉ DNO A CHYBY V ÚČTOCH (Ťahy 1-7) ============
+
+        EventNode(
+            id = "g1_missing_silk",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.GUILD_APPRENTICE,
+            minTurn = 1, maxTurn = 1,
+            forcedPriority = true,
+            titleEn = "The Missing Silk Shipment",
+            titleSk = "Zmiznuté Balíky Hodvábu",
+            textEn = "Guildmaster Corvus has discovered expensive Oriental goods missing from the warehouse. City guards pound on the workshop door. If no culprit is found, blame falls on you as the youngest apprentice.",
+            textSk = "Cechmajster Corvus zistil, že v sklade chýba drahý tovar z Orientu. Mestská stráž búši na dvere dielne. Ak sa páchateľ nenájde, vina padne na teba ako na najmladšieho tovariša.",
+            location = "Marketplace",
+            npcName = "Guildmaster Corvus",
+            npcTitle = "Silk Guildmaster",
+            npcArchetype = "MERCHANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Snitch on a fellow apprentice who drank in secret", textSk = "Udať kolegu tovariša, čo v noci tajne pil v krčme",
+                    tagEn = "Betrayal", tagSk = "Zrada", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.GUILDS to 10, Faction.PEASANTS to -25),
+                        addFlags = setOf("SNITCH_FELLOW"),
+                        resolutionTextEn = "Corvus's suspicion lands squarely on your unlucky fellow apprentice, and the guards drag him off instead.",
+                        resolutionTextSk = "Corvusovo podozrenie padne priamo na tvojho nešťastného kolegu a stráže si namiesto teba odvedú jeho.",
+                        bridgeTextEn = "Corvus presses the warehouse keys into your hand as a mark of trust.",
+                        bridgeTextSk = "Corvus ti vloží do ruky kľúče od skladu ako znak dôvery."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Accept the blame and commit to working off the debt", textSk = "Prijať vinu a zaviazať sa k odpracovaniu dlhu",
+                    tagEn = "Debt", tagSk = "Dlh", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -30, factionChanges = mapOf(Faction.GUILDS to 10),
+                        addFlags = setOf("INDEBTED_APPRENTICE"),
+                        resolutionTextEn = "Corvus nods grimly and marks the debt against your name in the guild ledger.",
+                        resolutionTextSk = "Corvus pochmúrne prikývne a poznačí dlh proti tvojmu menu v cechovej knihe.",
+                        bridgeTextEn = "The guards leave satisfied, but the debt will follow you for seasons to come.",
+                        bridgeTextSk = "Stráže odchádzajú spokojné, no dlh ťa bude sprevádzať ešte celé sezóny."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Falsify the ledger before the guards arrive", textSk = "Falošne upraviť účtovnú knihu pred príchodom stráže",
+                    tagEn = "Forgery", tagSk = "Falzifikát", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 10, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 15),
+                        addItems = setOf("Corrupt_Ledger"),
+                        addFlags = setOf("FORGER"),
+                        resolutionTextEn = "Ink barely dry, the doctored ledger satisfies the guards' cursory inspection.",
+                        resolutionTextSk = "Sotva zaschnutý atrament, upravená kniha uspokojí povrchnú prehliadku stráží.",
+                        bridgeTextEn = "The real numbers remain locked away in your memory - and your conscience.",
+                        bridgeTextSk = "Skutočné čísla zostávajú uzamknuté len v tvojej pamäti - a svedomí."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "g1_night_poisoner",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.GUILD_APPRENTICE,
+            minTurn = 2, maxTurn = 5,
+            titleEn = "The Night Poisoner in the Guild Tavern",
+            titleSk = "Nočný Travič v Cechovej Krčme",
+            textEn = "A messenger from a rival guild offers you a purse of silver in a dark alley, if you slip a laxative into Guildmaster Corvus's beer before the city council's crucial vote.",
+            textSk = "Posol z konkurenčného cechu ti v tmavej uličke ponúka mešec striebra, ak do piva cechmajstra Corvusa prisypeš preháňadlo pred dôležitým hlasovaním mestskej rady.",
+            location = "Tavern",
+            npcName = "Rival Messenger",
+            npcTitle = "Guild Rival's Agent",
+            npcArchetype = "BANDIT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Poison the cup and take the silver", textSk = "Nasypať jed do pohára a zobrať striebro",
+                    tagEn = "Sabotage", tagSk = "Sabotáž", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 35, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 15),
+                        factionChanges = mapOf(Faction.GUILDS to -20),
+                        addFlags = setOf("GUILD_SABOTEUR"),
+                        resolutionTextEn = "Corvus doubles over mid-toast, and the council vote proceeds without his voice.",
+                        resolutionTextSk = "Corvus sa uprostred prípitku zohne od bolesti a hlasovanie rady pokračuje bez jeho hlasu.",
+                        bridgeTextEn = "The rival's silver feels heavier in your pocket than it should.",
+                        bridgeTextSk = "Striebro rivala vo vrecku pôsobí ťažšie, než by malo."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Refuse and secretly warn Guildmaster Corvus", textSk = "Odstúpiť a tajne varovať cechmajstra Corvusa",
+                    tagEn = "Loyalty", tagSk = "Vernosť", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -10, factionChanges = mapOf(Faction.GUILDS to 25),
+                        addFlags = setOf("CORVUS_FAVORITE"),
+                        resolutionTextEn = "Corvus swaps his cup without a word, eyes narrowing toward the rival's table across the room.",
+                        resolutionTextSk = "Corvus bez slova vymení svoj pohár, jeho pohľad sa uprie na stôl rivala na druhej strane miestnosti.",
+                        bridgeTextEn = "The rival guild's messenger never approaches you again after that night.",
+                        bridgeTextSk = "Posol konkurenčného cechu sa k tebe po tej noci už nikdy nepriblíži."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Swap the cups and poison the messenger instead", textSk = "Vymeniť poháre a otráviť samotného posla",
+                    tagEn = "Reversal", tagSk = "Obrat", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 10, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 20),
+                        addFlags = setOf("SILENT_ASSASSIN"),
+                        resolutionTextEn = "The messenger's own laxative finds his cup instead, and he flees the tavern in visible distress.",
+                        resolutionTextSk = "Poslov vlastný preháňadlo skončí v jeho pohári a on v badateľnej núdzi uteká z krčmy.",
+                        bridgeTextEn = "No one in the tavern suspects the quiet apprentice in the corner.",
+                        bridgeTextSk = "Nikto v krčme nepodozrieva tichého tovariša v kúte."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "g1_smuggler_cart",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.GUILD_APPRENTICE,
+            condition = { it.worldFlags.contains("FORGER") || it.worldFlags.contains("INDEBTED_APPRENTICE") },
+            titleEn = "The Smuggler's Cart at the Southern Gate",
+            titleSk = "Pašerácky Voz pri Južnej Bráne",
+            textEn = "The gate captain demands an unchristian toll for a cart of materials. An underworld smuggler offers you a cut of the profit if you use the guild seal and die to forge a false pass.",
+            textSk = "Kapitán stráže pri bráne pýta nekresťanské mýto za voz s materiálom. Pašerák z podsvetia ti ponúka podiel zo zisku, ak použiješ cechovú pečať a razidlo na falšovanie priepustky.",
+            location = "Village",
+            npcName = "Smuggler Renner",
+            npcTitle = "Underworld Cart Runner",
+            npcArchetype = "BANDIT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Stamp the guild seal and smuggle the goods into the city workshop", textSk = "Otlačiť cechovú pečať a prepašovať tovar do mestskej dielne",
+                    tagEn = "Smuggling", tagSk = "Pašovanie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 40, notorietyChange = 15, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 20),
+                        addFlags = setOf("BLACK_MARKET_PARTNER"),
+                        resolutionTextEn = "The forged seal passes the gate guard's cursory glance without a second look.",
+                        resolutionTextSk = "Sfalšovaná pečať prejde povrchným pohľadom brányho strážcu bez druhého ohliadnutia.",
+                        bridgeTextEn = "Renner's underworld contacts now consider you a reliable partner.",
+                        bridgeTextSk = "Rennerovi kontakty z podsvetia ťa teraz považujú za spoľahlivého partnera."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Split the bribe with the guard instead", textSk = "Dohodnúť sa so strážnikom na rozdelení úplatku",
+                    tagEn = "Bribe", tagSk = "Úplatok", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 20, factionChanges = mapOf(Faction.NOBILITY to 15),
+                        addFlags = setOf("GUARD_BRIBER"),
+                        resolutionTextEn = "The guard's palm closes around half the coin, and the cart rolls through without incident.",
+                        resolutionTextSk = "Strážcova dlaň sa zovrie okolo polovice mince a voz prejde bez incidentu.",
+                        bridgeTextEn = "Renner shrugs off the smaller cut and moves on to the next opportunity.",
+                        bridgeTextSk = "Renner pokrčí plecami nad menším podielom a presunie sa k ďalšej príležitosti."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Refuse them both and report the illegal goods to the magistrate", textSk = "Odmietnuť oboch a nelegálny tovar nahlásiť richtárovi",
+                    tagEn = "Lawfulness", tagSk = "Zákonnosť", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.GUILDS to 10),
+                        influenceChanges = mapOf(UNDERWORLD_AFFINITY to -20),
+                        addFlags = setOf("LAW_ABIDING_CITIZEN"),
+                        resolutionTextEn = "The magistrate's men seize the cart, and Renner disappears into the crowd before they arrive.",
+                        resolutionTextSk = "Richtárovi muži zaberú voz a Renner zmizne v dave skôr, než dorazia.",
+                        bridgeTextEn = "The guild notes your honesty, though the underworld will remember your refusal.",
+                        bridgeTextSk = "Cech si všimne tvoju čestnosť, hoci podsvetie si zapamätá tvoje odmietnutie."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "g1_moneylender_debt",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.GUILD_APPRENTICE,
+            condition = { it.gold < 15 || it.worldFlags.contains("INDEBTED_APPRENTICE") },
+            titleEn = "The City Moneylender's Debt Note",
+            titleSk = "Dlžobný Úpis Mestského Úžerníka",
+            textEn = "Moneylender Malakai's enforcer has you pressed against an alley wall. The workshop's debt has grown with interest. Either you pay immediately, or you hand over the keys to the main guild warehouse.",
+            textSk = "Gorila úžerníka Malakaja ťa pritisla k stene v uličke. Dlh z dielne vzrástol o úroky. Buď okamžite zaplatíš, alebo odovzdáš kľúče od hlavného cechového skladu.",
+            location = "Village",
+            npcName = "Malakai's Enforcer",
+            npcTitle = "Moneylender's Thug",
+            npcArchetype = "BANDIT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Hand over the warehouse keys and open the doors at night", textSk = "Odovzdať kľúče od skladu a otvoriť im dvere v noci",
+                    tagEn = "Betrayal", tagSk = "Zrada", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.GUILDS to -30),
+                        influenceChanges = mapOf(UNDERWORLD_AFFINITY to 25),
+                        addFlags = setOf("WAREHOUSE_BETRAYER"),
+                        resolutionTextEn = "The warehouse locks click open under your own hand as Malakai's men slip inside in the dark.",
+                        resolutionTextSk = "Zámky skladu cvaknú a otvoria sa pod tvojou vlastnou rukou, kým sa Malakajovi muži potme vkradnú dnu.",
+                        bridgeTextEn = "By morning the debt is settled - and the guild's trust in you is gone.",
+                        bridgeTextSk = "Do rána je dlh vyrovnaný - a dôvera cechu v teba je preč."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Burn Malakai's house down and destroy the debt notes", textSk = "Podpáliť Malakajov dom a spáliť dlžobné úpisy",
+                    tagEn = "Arson", tagSk = "Podpaľačstvo", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 30, regionalTensionChange = 20,
+                        addFlags = setOf("ARSONIST"),
+                        removeFlags = setOf("INDEBTED_APPRENTICE"),
+                        resolutionTextEn = "Flames consume Malakai's ledgers along with every trace of your debt.",
+                        resolutionTextSk = "Plamene strávia Malakajove knihy spolu s každou stopou tvojho dlhu.",
+                        bridgeTextEn = "The night sky glows orange as you slip away from the smoking ruin.",
+                        bridgeTextSk = "Nočná obloha žiari oranžovo, kým sa vzďaľuješ od dymiacich trosiek."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Ask the manor guard for protection in exchange for informing on the moneylender", textSk = "Požiadať o ochranu panskú gardu výmenou za udanie úžerníka",
+                    tagEn = "Informing", tagSk = "Udanie", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.NOBILITY to 20),
+                        influenceChanges = mapOf(UNDERWORLD_AFFINITY to -40),
+                        addFlags = setOf("CITY_INFORMANT"),
+                        resolutionTextEn = "Manor guards drag Malakai's enforcer away as you watch from behind their shields.",
+                        resolutionTextSk = "Panská garda odvlečie Malakajovho gorilu preč, kým to sleduješ spoza ich štítov.",
+                        bridgeTextEn = "The underworld will not soon forgive an informant in its midst.",
+                        bridgeTextSk = "Podsvetie tak skoro neodpustí donášača vo svojich radoch."
+                    )
+                )
+            )
+        ),
+
+        // ============ PHASE 2: MESTSKÁ ELITA VS. PODSVETIE (Ťahy 8-16) ============
+
+        EventNode(
+            id = "g2_golden_contract",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.GUILD_APPRENTICE,
+            condition = { (it.factions[Faction.GUILDS] ?: 50) > 40 || it.worldFlags.contains("CORVUS_FAVORITE") },
+            titleEn = "The Golden Contract for the Manor Court",
+            titleSk = "Zlatá Zmluva pre Panský Dvor",
+            textEn = "The manor chamberlain seeks an exclusive supplier of luxury goods for the castle. Guildmaster Corvus lies feverish, and has entrusted you with negotiating the terms.",
+            textSk = "Panský komorník hľadá exkluzívneho dodávateľa luxusného tovaru pre hrad. Cechmajster leží v horúčkach a vyjednávaním podmienok poveril teba.",
+            location = "Castle",
+            npcName = "Chamberlain Voss",
+            npcTitle = "Manor Chamberlain",
+            npcArchetype = "NOBLE",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Inflate the contract price and quietly divert half the profit", textSk = "Nadsadiť cenu zmluvy a polovicu zisku tajne odkloniť na vlastný účet",
+                    tagEn = "Embezzlement", tagSk = "Sprenevera", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 60, notorietyChange = 10, factionChanges = mapOf(Faction.NOBILITY to -15),
+                        addFlags = setOf("EMBEZZLER"),
+                        resolutionTextEn = "Voss signs without reading closely, and half the sum quietly finds its way into your own strongbox.",
+                        resolutionTextSk = "Voss podpíše bez dôkladného čítania a polovica sumy si potichu nájde cestu do tvojej vlastnej pokladničky.",
+                        bridgeTextEn = "The guild's coffers show a curiously modest gain from such a grand contract.",
+                        bridgeTextSk = "Cechová pokladnica vykazuje kuriózne skromný zisk z takej veľkolepej zmluvy."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Negotiate an honest, favorable contract for the guild", textSk = "Uzatvoriť výhodnú a poctivú zmluvu v prospech cechu",
+                    tagEn = "Honest Trade", tagSk = "Čestný Obchod", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.GUILDS to 30, Faction.NOBILITY to 25),
+                        addFlags = setOf("GUILD_BENEFACTOR"),
+                        resolutionTextEn = "Voss shakes your hand firmly, impressed by terms that favor both castle and craftsmen alike.",
+                        resolutionTextSk = "Voss ti pevne stlačí ruku, ohromený podmienkami, ktoré prospievajú hradu aj remeselníkom.",
+                        bridgeTextEn = "Word of your fair dealing reaches the guild elders before nightfall.",
+                        bridgeTextSk = "Chýr o tvojom férovom jednaní sa dostane k cechovým starším ešte pred súmrakom."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Offer the chamberlain forbidden black-market goods", textSk = "Ponúknuť komorníkovi skrytý, zakázaný tovar z čierneho trhu",
+                    tagEn = "Corruption", tagSk = "Korupcia", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 80, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 25),
+                        addItems = setOf("Nobleman_Secret"),
+                        addFlags = setOf("COURT_CORRUPTOR"),
+                        resolutionTextEn = "Voss's eyes gleam at the forbidden wares, and a secret now binds you both.",
+                        resolutionTextSk = "Vossovi zažiaria oči nad zakázaným tovarom a teraz vás oboch viaže spoločné tajomstvo.",
+                        bridgeTextEn = "The chamberlain's discretion is bought - along with his future obedience.",
+                        bridgeTextSk = "Komorníkova mlčanlivosť je kúpená - spolu s jeho budúcou poslušnosťou."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "g2_apprentice_revolt",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.GUILD_APPRENTICE,
+            condition = { it.regionalTension > 50 },
+            titleEn = "The Revolt of the Guild Apprentices",
+            titleSk = "Vzbura Cechových Tovarišov",
+            textEn = "Workshop laborers strike for humane conditions, smashing expensive tools. The manor magistrate sends mercenaries with greatswords to clear the streets.",
+            textSk = "Pracovníci v dielňach štrajkujú za ľudskejšie podmienky a ničia drahé nástroje. Panský richtár posiela žoldnierov s obojručnými mečmi na vyčistenie ulíc.",
+            location = "Marketplace",
+            npcName = "Apprentice Fenn",
+            npcTitle = "Strike Organizer",
+            npcArchetype = "PEASANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Lead the apprentices and demand civic rights", textSk = "Postaviť sa na čelo tovarišov a žiadať mestské prístupové práva",
+                    tagEn = "Rebellion", tagSk = "Povstanie", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        regionalTensionChange = 30, factionChanges = mapOf(Faction.PEASANTS to 30, Faction.GUILDS to -40),
+                        addFlags = setOf("GUILD_REBEL"),
+                        resolutionTextEn = "Fenn's fist rises alongside yours as the assembled apprentices roar their demands at the mercenary line.",
+                        resolutionTextSk = "Fennova päsť sa zdvihne popri tvojej, kým zhromaždení tovariši revú svoje požiadavky proti línii žoldnierov.",
+                        bridgeTextEn = "The guild elders watch your defiance with cold, calculating eyes.",
+                        bridgeTextSk = "Cechoví starší sledujú tvoj vzdor chladnými, vypočítavými očami."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Secretly supply weapons to the manor mercenaries", textSk = "Dodať tajne zbrane panským žoldnierom a potlačiť vzburu",
+                    tagEn = "Suppression", tagSk = "Potlačenie", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 30, factionChanges = mapOf(Faction.NOBILITY to 30, Faction.PEASANTS to -50),
+                        addFlags = setOf("PATRICIAN_TOOL"),
+                        resolutionTextEn = "Crates of blades change hands quietly behind the workshop, and the mercenaries advance with confidence.",
+                        resolutionTextSk = "Debny s čepeľami potichu menia majiteľa za dielňou a žoldnieri postupujú so sebavedomím.",
+                        bridgeTextEn = "The patrician families take note of a guildsman willing to arm their cause.",
+                        bridgeTextSk = "Patricijské rodiny si všimnú cechára ochotného vyzbrojiť ich vec."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Lock yourself in the warehouse and guard only the richest chests", textSk = "Zamknúť sa v sklade a chrániť len najdrahšie cechové truhlice",
+                    tagEn = "Self-Interest", tagSk = "Sebectvo", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 25, regionalTensionChange = 10,
+                        resolutionTextEn = "You bar the warehouse door and listen to the riot rage past outside, coin close at hand.",
+                        resolutionTextSk = "Zatarasíš dvere skladu a počúvaš, ako okolo zúri výtržnosť, mince po ruke.",
+                        bridgeTextEn = "The chests survive the night untouched - unlike the streets outside.",
+                        bridgeTextSk = "Truhlice noc prežijú nedotknuté - na rozdiel od ulíc vonku."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "g2_counterfeit",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.GUILD_APPRENTICE,
+            condition = { it.worldFlags.contains("FORGER") || it.worldFlags.contains("BLACK_MARKET_PARTNER") },
+            titleEn = "Counterfeit Coinage in the Undercity",
+            titleSk = "Falošné Mincovníctvo v Podzemí",
+            textEn = "An underground coiners' guild has contacted you. They have a die for royal ducats and need your knowledge of metals to alloy lead with silver.",
+            textSk = "Podzemný spolok peňazokazov ťa kontaktoval. Majú razidlo na kráľovské dukáty a potrebujú tvoje znalosti kovov na legovanie olova so striebrom.",
+            location = "Forest",
+            npcName = "Coiner Hollow",
+            npcTitle = "Underground Coiner",
+            npcArchetype = "BANDIT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Help cast counterfeit coins for a third share", textSk = "Pomôcť odlievať falošné mince za tretinový podiel",
+                    tagEn = "Counterfeiting", tagSk = "Falšovanie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 70, notorietyChange = 30,
+                        addItems = setOf("Counterfeit_Coins"),
+                        addFlags = setOf("COINER"),
+                        resolutionTextEn = "Molten silver-lead alloy hisses into the mold, taking the shape of the crown's own seal.",
+                        resolutionTextSk = "Roztavená striebro-olovená zliatina zasyčí do formy a nadobudne tvar samotnej kráľovskej pečate.",
+                        bridgeTextEn = "Your share of the counterfeit hoard weighs heavy and cold in your pocket.",
+                        bridgeTextSk = "Tvoj podiel z falošného pokladu ti vo vrecku ťaží chladne a ťažko."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Report the coiners directly to the city council", textSk = "Udať peňazokazov priamo do rúk mestskej rady",
+                    tagEn = "Loyalty", tagSk = "Vernosť", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 20, factionChanges = mapOf(Faction.GUILDS to 30),
+                        influenceChanges = mapOf(UNDERWORLD_AFFINITY to -40),
+                        addFlags = setOf("CROWN_LOYALIST"),
+                        resolutionTextEn = "City guards raid the counterfeiters' den before the next batch ever cools.",
+                        resolutionTextSk = "Mestská stráž vtrhne do doupäťa peňazokazov skôr, než ďalšia dávka vôbec vychladne.",
+                        bridgeTextEn = "The council rewards your loyalty with a modest purse and public thanks.",
+                        bridgeTextSk = "Rada odmení tvoju vernosť skromným mešcom a verejným poďakovaním."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Rob the coiners of their die and flee", textSk = "Okrať peňazokazov o razidlo a utiecť",
+                    tagEn = "Theft", tagSk = "Krádež", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 20, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 15),
+                        addItems = setOf("Royal_Mint_Die"),
+                        resolutionTextEn = "The royal die slips into your coat while Hollow's men argue over the last casting.",
+                        resolutionTextSk = "Kráľovské razidlo skĺzne do tvojho kabáta, kým sa Hollowovi muži hádajú o poslednom odliatku.",
+                        bridgeTextEn = "You vanish into the tunnels before anyone notices the theft.",
+                        bridgeTextSk = "Zmizneš v tuneloch skôr, než si niekto všimne krádež."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "g2_barricades",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.GUILD_APPRENTICE,
+            condition = { it.regionalTension > 70 || it.worldFlags.contains("GUILD_REBEL") || it.worldFlags.contains("PATRICIAN_TOOL") },
+            titleEn = "Barricades at the City Hall",
+            titleSk = "Barikády na Mestskej Radnici",
+            textEn = "The city hall is aflame. The poor and the apprentices fight the manor guard for control of the city treasury.",
+            textSk = "Radnica je v plameňoch. Chudoba a tovariši bojujú s panskou gardou o kontrolu nad mestskou pokladnicou.",
+            location = "Castle",
+            npcName = "Magistrate Voclain",
+            npcTitle = "City Magistrate",
+            npcArchetype = "NOBLE",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Break open the treasury and share the gold with the apprentices", textSk = "Vylomiť dvere radničnej pokladnice a podeliť zlato tovarišom",
+                    tagEn = "Redistribution", tagSk = "Prerozdelenie", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 30, factionChanges = mapOf(Faction.GUILDS to -30, Faction.PEASANTS to 50),
+                        addFlags = setOf("PEOPLE_TRIBUNE"),
+                        resolutionTextEn = "Gold cascades into desperate hands as the treasury door finally gives way under the crowd's weight.",
+                        resolutionTextSk = "Zlato sa vysype do zúfalých rúk, kým dvere pokladnice napokon povolia pod váhou davu.",
+                        bridgeTextEn = "The guild elders will never forgive this night, but the streets will never forget it either.",
+                        bridgeTextSk = "Cechoví starší túto noc nikdy neodpustia, no ani ulice na ňu nikdy nezabudnú."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Defend the city archives with your own body against the mob", textSk = "Brániť radničné archívy vlastným telom pred davom",
+                    tagEn = "Defense", tagSk = "Obrana", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.GUILDS to 40, Faction.NOBILITY to 30, Faction.PEASANTS to -40),
+                        addFlags = setOf("SAVIOR_OF_THE_CITY"),
+                        resolutionTextEn = "You stand between the flames and the archive doors until the magistrate's men finally arrive.",
+                        resolutionTextSk = "Stojíš medzi plameňmi a dverami archívu, kým konečne nedorazia richtárovi muži.",
+                        bridgeTextEn = "Voclain calls you the savior of the city's records before the assembled council.",
+                        bridgeTextSk = "Voclain ťa pred zhromaždenou radou nazve záchrancom mestských záznamov."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Use the chaos to burn the debt ledger and steal the city seal", textSk = "Využiť zmätok, podpáliť knihu dlhov a ukradnúť mestskú pečať",
+                    tagEn = "Theft", tagSk = "Krádež", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 60, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 25),
+                        addItems = setOf("City_Seal"),
+                        addFlags = setOf("MASTER_THIEF"),
+                        resolutionTextEn = "Flames devour the debt ledger while the city's own seal disappears into your coat unnoticed.",
+                        resolutionTextSk = "Plamene strávia knihu dlhov, kým samotná mestská pečať nepozorovane zmizne v tvojom kabáte.",
+                        bridgeTextEn = "By dawn, half the city's debts have simply ceased to exist - along with the seal.",
+                        bridgeTextSk = "Do rána polovica mestských dlhov jednoducho prestane existovať - spolu s pečaťou."
+                    )
+                )
+            )
+        ),
+
+        // ============ PHASE 3: MESTSKÝ KLIMAX A SÚDNE ZÚČTOVANIE (Ťahy 17-25) ============
+
+        EventNode(
+            id = "g3_inquisition_court",
+            phase = EventPhase.PHASE_3,
+            originClass = OriginClass.GUILD_APPRENTICE,
+            minTurn = 17, maxTurn = 24,
+            forcedPriority = true,
+            condition = { it.notoriety > 70 || it.worldFlags.contains("EMBEZZLER") || it.worldFlags.contains("BLACK_MARKET_PARTNER") || it.worldFlags.contains("COINER") },
+            titleEn = "The Inquisitorial Court Raid on the City Hall",
+            titleSk = "Inkvizičný a Súdny Záťah na Radnici",
+            textEn = "The Inquisitor and the city judge have seized the guild ledgers. They found your name tied to smuggling, usury, and coin debasement.",
+            textSk = "Inkvizítor a mestský sudca zaistili cechové účtovné knihy. Našli tvoje meno spojené s pašovaním, úžerou a znehodnocovaním meny.",
+            location = "Castle",
+            npcName = "Judge Harlow",
+            npcTitle = "City Judge",
+            npcArchetype = "NOBLE",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Bribe the judge with proceeds from black-market dealings", textSk = "Podplatiť sudcu ziskom z čiernych obchodov a nelegálnych razieb",
+                    tagEn = "Bribe", tagSk = "Úplatok", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 10,
+                        resolutionTextEn = "You have no coin left to offer, and Harlow's gavel comes down without mercy.",
+                        resolutionTextSk = "Nemáš žiadnu mincu na ponuku a Harlowovo kladivo dopadá bez milosti.",
+                        bridgeTextEn = "An empty purse before the court only deepens your sentence.",
+                        bridgeTextSk = "Prázdny mešec pred súdom len prehlbuje tvoj rozsudok."
+                    ),
+                    conditionalOutcome = { world ->
+                        if (world.gold >= 60) {
+                            ChoiceConsequence(
+                                goldChange = -60, notorietyChange = -30,
+                                addFlags = setOf("BRIBED_JUDGE"),
+                                resolutionTextEn = "Harlow's palm closes around the coin beneath the bench, and the charges quietly evaporate.",
+                                resolutionTextSk = "Harlowova dlaň sa zovrie okolo mince pod lavicou a obvinenia potichu vyprchajú.",
+                                bridgeTextEn = "The ledger entries concerning your name are quietly amended.",
+                                bridgeTextSk = "Zápisy v knihe týkajúce sa tvojho mena sú potichu upravené."
+                            )
+                        } else {
+                            ChoiceConsequence(
+                                notorietyChange = 10,
+                                resolutionTextEn = "You have no coin left to offer, and Harlow's gavel comes down without mercy.",
+                                resolutionTextSk = "Nemáš žiadnu mincu na ponuku a Harlowovo kladivo dopadá bez milosti.",
+                                bridgeTextEn = "An empty purse before the court only deepens your sentence.",
+                                bridgeTextSk = "Prázdny mešec pred súdom len prehlbuje tvoj rozsudok."
+                            )
+                        }
+                    }
+                ),
+                EventChoice(
+                    id = 2, textEn = "Pin all the blame on the ailing Guildmaster Corvus with the corrupt ledger", textSk = "Hodiť celú vinu na chorého cechmajstra Corvusa a dodať Corrupt_Ledger",
+                    tagEn = "Scapegoat", tagSk = "Obetný Baránok", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 10,
+                        resolutionTextEn = "You have no doctored ledger to present, and the judge's questions turn back toward you.",
+                        resolutionTextSk = "Nemáš žiadnu upravenú knihu na predloženie a sudcove otázky sa obracajú späť na teba.",
+                        bridgeTextEn = "Without proof, your accusation rings hollow before the court.",
+                        bridgeTextSk = "Bez dôkazu znie tvoje obvinenie pred súdom prázdno."
+                    ),
+                    conditionalOutcome = { world ->
+                        if (world.inventoryItemIds.contains("Corrupt_Ledger")) {
+                            ChoiceConsequence(
+                                factionChanges = mapOf(Faction.GUILDS to -50, Faction.NOBILITY to 20),
+                                removeItems = setOf("Corrupt_Ledger"),
+                                addFlags = setOf("CORVUS_SCAPEGOAT"),
+                                resolutionTextEn = "The doctored ledger damns Corvus in the judge's eyes, and guards drag the feverish guildmaster to the tower.",
+                                resolutionTextSk = "Upravená kniha usvedčí Corvusa v sudcových očiach a stráže odvlečú horúčkou zmoreného cechmajstra do veže.",
+                                bridgeTextEn = "The guild hall falls silent as its master is led away in your place.",
+                                bridgeTextSk = "Cechová hala stíchne, keď jej majstra odvedú namiesto teba."
+                            )
+                        } else {
+                            ChoiceConsequence(
+                                notorietyChange = 10,
+                                resolutionTextEn = "You have no doctored ledger to present, and the judge's questions turn back toward you.",
+                                resolutionTextSk = "Nemáš žiadnu upravenú knihu na predloženie a sudcove otázky sa obracajú späť na teba.",
+                                bridgeTextEn = "Without proof, your accusation rings hollow before the court.",
+                                bridgeTextSk = "Bez dôkazu znie tvoje obvinenie pred súdom prázdno."
+                            )
+                        }
+                    }
+                ),
+                EventChoice(
+                    id = 3, textEn = "Jump from the city hall window and flee into the sewers", textSk = "Vyskočiť z okna radnice a utiecť do mestskej kanalizácie",
+                    tagEn = "Escape", tagSk = "Útek", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -9999, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 30),
+                        addFlags = setOf("SEWER_RAT"),
+                        resolutionTextEn = "You crash through the shutters and drop into the filth below as shouts erupt above.",
+                        resolutionTextSk = "Prerazíš okenice a spadneš do špiny dolu, kým hore vypuknú výkriky.",
+                        bridgeTextEn = "Everything you owned is left behind in the courtroom above.",
+                        bridgeTextSk = "Všetko, čo si vlastnil, zostáva v súdnej sieni hore."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "g3_blockade",
+            phase = EventPhase.PHASE_3,
+            originClass = OriginClass.GUILD_APPRENTICE,
+            minTurn = 18, maxTurn = 22,
+            forcedPriority = true,
+            titleEn = "The Great Blockade of the Trade Roads",
+            titleSk = "Veľká Blokáda Obchodných Ciest",
+            textEn = "Surrounding manor families have declared a blockade on the city. Flour and raw material stocks dry up, and guilds are collapsing. Guildmasters sell off assets for a fraction of their worth.",
+            textSk = "Okolité panské rodiny vyhlásili mestu blokádu. Zasychanie zásob múky a surovín spôsobuje pád cechov. Cechmajstri rozpredávajú majetky za zlomok ceny.",
+            location = "Marketplace",
+            npcName = "Guildmaster Corvus",
+            npcTitle = "Silk Guildmaster",
+            npcArchetype = "MERCHANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Buy out failing workshops with your accumulated savings", textSk = "Skúpiť krachujúce dielne za svoje nahromadené úspory",
+                    tagEn = "Monopoly", tagSk = "Monopol", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.GUILDS to 10),
+                        resolutionTextEn = "You have no savings substantial enough to buy anything of worth in this crisis.",
+                        resolutionTextSk = "Nemáš dostatočné úspory na to, aby si v tejto kríze kúpil čokoľvek hodnotné.",
+                        bridgeTextEn = "You watch other, wealthier guildsmen seize the failing workshops instead.",
+                        bridgeTextSk = "Sleduješ, ako krachujúce dielne namiesto teba získavajú iní, bohatší cechári."
+                    ),
+                    conditionalOutcome = { world ->
+                        if (world.gold >= 50) {
+                            ChoiceConsequence(
+                                goldChange = -50, factionChanges = mapOf(Faction.GUILDS to 50),
+                                addFlags = setOf("MONOPOLIST"),
+                                resolutionTextEn = "One by one, desperate guildmasters sign their workshops over to you for a pittance.",
+                                resolutionTextSk = "Zúfalí cechmajstri jeden po druhom prepisujú svoje dielne na teba za babku.",
+                                bridgeTextEn = "By the blockade's end, half the district's workshops answer to your name.",
+                                bridgeTextSk = "Do konca blokády polovica dielní v štvrti odpovedá na tvoje meno."
+                            )
+                        } else {
+                            ChoiceConsequence(
+                                factionChanges = mapOf(Faction.GUILDS to 10),
+                                resolutionTextEn = "You have no savings substantial enough to buy anything of worth in this crisis.",
+                                resolutionTextSk = "Nemáš dostatočné úspory na to, aby si v tejto kríze kúpil čokoľvek hodnotné.",
+                                bridgeTextEn = "You watch other, wealthier guildsmen seize the failing workshops instead.",
+                                bridgeTextSk = "Sleduješ, ako krachujúce dielne namiesto teba získavajú iní, bohatší cechári."
+                            )
+                        }
+                    }
+                ),
+                EventChoice(
+                    id = 2, textEn = "Smuggle food into the city through the sewers and sell it at a markup", textSk = "Prepašovať potraviny do mesta cez kanalizáciu a predávať ich s prirážkou",
+                    tagEn = "War Profiteering", tagSk = "Vojnové Zbohatlíctvo", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 70, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 20),
+                        factionChanges = mapOf(Faction.PEASANTS to -20),
+                        addFlags = setOf("WAR_PROFITEEER"),
+                        resolutionTextEn = "Sacks of flour emerge from the sewer tunnels, and starving families pay whatever price you name.",
+                        resolutionTextSk = "Vrecia múky sa vynárajú z kanalizačných tunelov a hladujúce rodiny platia akúkoľvek cenu, ktorú stanovíš.",
+                        bridgeTextEn = "Your profit grows with every desperate customer, and so does their resentment.",
+                        bridgeTextSk = "Tvoj zisk rastie s každým zúfalým zákazníkom, rovnako ako ich zášť."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Join the manor armies outside the walls and betray the gate's weaknesses", textSk = "Pridať sa k panským vojskám za hradbami a vyzradiť im slabiny mestskej brány",
+                    tagEn = "Betrayal", tagSk = "Zrada", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 40, factionChanges = mapOf(Faction.NOBILITY to 40, Faction.GUILDS to -80),
+                        addFlags = setOf("CITY_TRAITOR"),
+                        resolutionTextEn = "You mark the crumbling section of wall on a map and hand it to the besieging captain under cover of darkness.",
+                        resolutionTextSk = "Na mape označíš rozpadávajúcu sa časť hradby a pod rúškom tmy ju odovzdáš obliehajúcemu kapitánovi.",
+                        bridgeTextEn = "The blockade will end soon - one way or another, and by your hand.",
+                        bridgeTextSk = "Blokáda čoskoro skončí - tak či onak, a tvojou rukou."
                     )
                 )
             )
