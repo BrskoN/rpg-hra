@@ -153,10 +153,11 @@ object EventDeck {
 
     private fun nodesForOrigin(origin: OriginClass): List<EventNode> = when (origin) {
         OriginClass.PEASANT -> PEASANT_NODES
+        OriginClass.ACOLYTE -> ACOLYTE_NODES
         else -> emptyList()
     }
 
-    val ALL_NODES: List<EventNode> get() = PEASANT_NODES
+    val ALL_NODES: List<EventNode> get() = PEASANT_NODES + ACOLYTE_NODES
 
     // Hidden influence keys used across the deck.
     private const val REBEL_TRUST = "Rebel_Trust"
@@ -1121,6 +1122,598 @@ object EventDeck {
                             )
                         }
                     }
+                )
+            )
+        )
+    )
+
+    // ---------------------------------------------------------------------
+    // ACOLYTE CHAPTER 1 DECK
+    // ---------------------------------------------------------------------
+    private val ACOLYTE_NODES: List<EventNode> = listOf(
+
+        // ============ PHASE 1: ZAKÁZANÉ TEXTY A KLÁŠTORNÁ ROLA (Ťahy 1-7) ============
+
+        EventNode(
+            id = "a1_forbidden_manuscript",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.ACOLYTE,
+            minTurn = 1, maxTurn = 1,
+            forcedPriority = true,
+            titleEn = "The Forbidden Manuscript Beneath the Floor",
+            titleSk = "Zakázaný Rukopis pod Dlážkou",
+            textEn = "Sweeping the vaulted library, you find a loose tile. Beneath it lies a dust-caked parchment volume bound in human skin, marked with heretical symbols. Footsteps of Bishop Alistair echo in the corridor.",
+            textSk = "Pri zametaní klenutej knižnice nájdeš uvoľnenú dlaždicu. Pod ňou leží prachom zapadnutý pergamencový zväzok viazaný v ľudskej koži s kacírskymi symbolmi. V chodbe počuť kroky Biskupa Alistaira.",
+            location = "Cathedral",
+            npcName = "Bishop Alistair",
+            npcTitle = "High Prelate",
+            npcArchetype = "BISHOP",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Hand the manuscript to the Bishop at once", textSk = "Okamžite odovzdať rukopis Biskupovi",
+                    tagEn = "Loyalty", tagSk = "Vernosť", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.CHURCH to 15, Faction.PEASANTS to -10),
+                        addFlags = setOf("LOYAL_INFORMER"),
+                        resolutionTextEn = "Alistair's eyes widen at the sight, and he presses the archive keys into your hands in gratitude.",
+                        resolutionTextSk = "Alistairove oči sa rozšíria pri pohľade naň a on ti vďačne vtlačí do rúk kľúče od archívu.",
+                        bridgeTextEn = "You are trusted now in ways few novices ever are.",
+                        bridgeTextSk = "Teraz ti dôverujú spôsobom, akým málokedy dôverujú novicom."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Hide it under your habit and study it by night", textSk = "Ukryť rukopis pod habit a preštudovať ho v noci",
+                    tagEn = "Forbidden Study", tagSk = "Zakázané Štúdium", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 10, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 15),
+                        addItems = setOf("Forbidden_Manuscript"),
+                        addFlags = setOf("HERETIC_KNOWLEDGE"),
+                        resolutionTextEn = "By candlelight, the forbidden script's meaning unfolds - terrifying and intoxicating.",
+                        resolutionTextSk = "Pri sviečke sa ti odhaľuje význam zakázaného textu - desivý a opojný zároveň.",
+                        bridgeTextEn = "You slide the volume beneath a loose floorboard in your own cell.",
+                        bridgeTextSk = "Zväzok schováš pod uvoľnenú dosku vo vlastnej cele."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Plant the book in rival Brother Bernard's cell", textSk = "Podstrčiť knihu do cely rivala, brata Bernarda",
+                    tagEn = "Scheme", tagSk = "Intriga", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 10, regionalTensionChange = 15,
+                        addFlags = setOf("MONASTERY_SCHEMER"),
+                        resolutionTextEn = "Guards drag a bewildered Bernard away in chains before he can utter a single protest.",
+                        resolutionTextSk = "Stráže odvlečú zmäteného Bernarda v reťaziach skôr, než stihne čo i len zaprotestovať.",
+                        bridgeTextEn = "Your rival's cell now stands empty, and no one suspects your hand in it.",
+                        bridgeTextSk = "Bernardova cela teraz stojí prázdna a nikto netuší o tvojej ruke v tom."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "a1_plague_crypt",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.ACOLYTE,
+            minTurn = 2, maxTurn = 5,
+            titleEn = "The Plague Mortuary in the Crypt",
+            titleSk = "Morová Márnica v Krypte",
+            textEn = "The crypt is full of babbling sick. A wealthy merchant begs for last rites before death, offering a heavy gold ring if you bury him in hallowed ground despite the Bishop's ban.",
+            textSk = "Krypta je plná blabotajúcich nemocných. Bohatý kupec pred smrťou žiada absolúciu a núka ti ťažký zlatý prsteň, ak ho pochováš do svätenej pôdy aj napriek Biskupovmu zákazu.",
+            location = "Cathedral",
+            npcName = "Merchant Aldous",
+            npcTitle = "Dying Merchant",
+            npcArchetype = "MERCHANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Take the ring and secretly bury him in the sacred grove", textSk = "Zobrať prsteň a potajomky vykopať hrob v posvätenom háji",
+                    tagEn = "Bribe", tagSk = "Úplatok", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 40, factionChanges = mapOf(Faction.CHURCH to -10),
+                        addItems = setOf("Merchant_Signet"),
+                        addFlags = setOf("GRAVE_ROBBER"),
+                        resolutionTextEn = "Aldous presses the ring into your palm with the last of his strength, at peace.",
+                        resolutionTextSk = "Aldous ti s poslednými silami vtlačí prsteň do dlane, konečne pokojný.",
+                        bridgeTextEn = "You bury him by lantern light in soil that was never meant for merchants.",
+                        bridgeTextSk = "Pochováš ho pri svetle lampáša do pôdy, ktorá nikdy nebola určená pre kupcov."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Refuse the ring and give true holy service freely", textSk = "Odmietnuť prsteň a vykonať skutočnú svätú službu bezodplatne",
+                    tagEn = "Devotion", tagSk = "Oddanosť", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.CHURCH to 20, Faction.PEASANTS to 20),
+                        addFlags = setOf("SAINTLY_DEVOTION"),
+                        resolutionTextEn = "Aldous weeps in gratitude as you anoint him without a single coin changing hands.",
+                        resolutionTextSk = "Aldous vďačne plače, kým ho pomažeš bez toho, aby sa vymenila čo i len jedna minca.",
+                        bridgeTextEn = "Word of your selfless devotion spreads through the sick-ward.",
+                        bridgeTextSk = "Chýr o tvojej nezištnej oddanosti sa šíri chorobincom."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Rip the ring from his finger and dump the body in the mass grave", textSk = "Prsteň mu strhnúť z prsta a telo hodiť do masového hrobu za hradbami",
+                    tagEn = "Cruelty", tagSk = "Krutosť", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 40, notorietyChange = 15, factionChanges = mapOf(Faction.CHURCH to -20),
+                        addFlags = setOf("RUTHLESS_CLERIC"),
+                        resolutionTextEn = "The ring comes free with a twist, and Aldous's body joins the nameless dead beyond the walls.",
+                        resolutionTextSk = "Prsteň sa uvoľní jedným trhnutím a Aldousovo telo sa pridá k bezmenným mŕtvym za hradbami.",
+                        bridgeTextEn = "You wash the grave dirt from your hands and say nothing to anyone.",
+                        bridgeTextSk = "Umyješ si z rúk hrobovú hlinu a nikomu nič nepovieš."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "a1_indulgence_sale",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.ACOLYTE,
+            titleEn = "The Sale of Indulgences on the Green",
+            titleSk = "Predaj Odpustkov na Návesí",
+            textEn = "The Bishop entrusted you with the strongbox and indulgence certificates. A desperate peasant has no coin, but offers his only daughter into monastery service in exchange for his father's salvation.",
+            textSk = "Biskup ti zveril pokladničku a certifikáty odpustkov. Zúfalý poddaný nemá ani medenák, ale núka svoju jedinú dcéru do služby v kláštore výmenou za spasenie duše svojho otca.",
+            location = "Village",
+            npcName = "Peasant Aldric",
+            npcTitle = "Desperate Father",
+            npcArchetype = "PEASANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Reconcile, grant the indulgence, take the girl as a cook", textSk = "Uzmieriť sa, dať odpustok a dievča vziať ako kuchárku",
+                    tagEn = "Mercy", tagSk = "Milosrdenstvo", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.PEASANTS to 15, Faction.CHURCH to -10),
+                        addFlags = setOf("MERCIFUL_BROTHER"),
+                        resolutionTextEn = "Aldric weeps with relief as his daughter is led gently into the kitchens instead of turned away.",
+                        resolutionTextSk = "Aldric plače úľavou, kým jeho dcéru namiesto odmietnutia jemne odvedú do kuchýň.",
+                        bridgeTextEn = "The certificate is granted freely, against the letter of church law.",
+                        bridgeTextSk = "Certifikát je udelený zadarmo, proti litere cirkevného práva."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Drive them off with the whip, uncompromising and unpaid", textSk = "Nekompromisne ich vyhnať bičom bez peňazí",
+                    tagEn = "Dogma", tagSk = "Dogma", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 20, factionChanges = mapOf(Faction.CHURCH to 15, Faction.PEASANTS to -20),
+                        addFlags = setOf("DOGMATIC_FANATIC"),
+                        resolutionTextEn = "The whip cracks and Aldric stumbles back, his plea unanswered by holy law.",
+                        resolutionTextSk = "Bič zapraská a Aldric cúvne, jeho prosba zostáva nevypočutá svätým zákonom.",
+                        bridgeTextEn = "Other buyers, watching, pay in full without a word of protest.",
+                        bridgeTextSk = "Ostatní kupujúci, ktorí to sledujú, platia v plnej výške bez slova protestu."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Embezzle part of the collected coin for yourself", textSk = "Spreneveriť časť vybraných peňazí z pokladničky pre seba",
+                    tagEn = "Theft", tagSk = "Krádež", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 30, notorietyChange = 10,
+                        addFlags = setOf("CHURCH_THIEF"),
+                        resolutionTextEn = "Your fingers slip a fold of coin into your sleeve before the strongbox is sealed again.",
+                        resolutionTextSk = "Tvoje prsty schovajú záhyb mincí do rukáva skôr, než sa pokladnička znovu zapečatí.",
+                        bridgeTextEn = "The ledger will not balance later, but that is a problem for another day.",
+                        bridgeTextSk = "Účtovná kniha sa neskôr nebude zhodovať, no to je problém na iný deň."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "a1_executioner_confession",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.ACOLYTE,
+            condition = { it.worldFlags.contains("SAINTLY_DEVOTION") || it.worldFlags.contains("LOYAL_INFORMER") },
+            titleEn = "The Executioner's Midnight Confession",
+            titleSk = "Nočná Spoveď Panského Kata",
+            textEn = "The blood-soaked executioner comes to the confessional at midnight. In tears, he confesses the manor steward forced him to torture an innocent brother for a hidden treasure.",
+            textSk = "Krvavý kat prichádza o polnoci do spovednice. V slzách sa spovedá, že panský správca ho prinútil mučiť nevinného brata pre zlatý poklad.",
+            location = "Cathedral",
+            npcName = "Executioner Grim",
+            npcTitle = "Manor Executioner",
+            npcArchetype = "NOBLE",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Assure him of forgiveness and learn the treasure's hiding place", textSk = "Ubezpečiť ho o odpustení a získať od neho úkryt pokladu",
+                    tagEn = "Exploit", tagSk = "Zneužitie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 35, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 10),
+                        addItems = setOf("Torturer_Key"),
+                        addFlags = setOf("CONFESSION_EXPLOITER"),
+                        resolutionTextEn = "Grim's whispered gratitude comes with a rusted key and a hidden vault's location.",
+                        resolutionTextSk = "Grimova šeptaná vďaka príde spolu so zhrdzaveným kľúčom a polohou skrytej klenby.",
+                        bridgeTextEn = "The seal of confession has never felt so profitable.",
+                        bridgeTextSk = "Spovedné tajomstvo sa nikdy nezdalo tak výnosné."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Order penance and hand him to church court", textSk = "Nariadiť mu pokánie a vydať ho cirkevnému súdu",
+                    tagEn = "Justice", tagSk = "Spravodlivosť", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.CHURCH to 25, Faction.NOBILITY to 10),
+                        addFlags = setOf("HOLY_JUSTICIAR"),
+                        resolutionTextEn = "Grim kneels willingly before the church court, accepting whatever penance awaits.",
+                        resolutionTextSk = "Grim ochotne kľačí pred cirkevným súdom a prijíma akékoľvek pokánie ho čaká.",
+                        bridgeTextEn = "The church's justice is seen to be done, and your name is noted for it.",
+                        bridgeTextSk = "Cirkevná spravodlivosť je vykonaná pred zrakmi všetkých a tvoje meno je za to zaznamenané."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Use his secret to blackmail the manor steward", textSk = "Použiť jeho tajomstvo na vydieranie panského správcu",
+                    tagEn = "Blackmail", tagSk = "Vydieranie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 50, regionalTensionChange = 20, factionChanges = mapOf(Faction.NOBILITY to -15),
+                        addFlags = setOf("BLACKMAILER"),
+                        resolutionTextEn = "The steward's face pales as you lay out exactly what you know, and exactly what you want.",
+                        resolutionTextSk = "Správcova tvár zbledne, keď mu vyložíš presne to, čo vieš, a presne to, čo chceš.",
+                        bridgeTextEn = "Gold arrives quietly at the monastery gate the very next morning.",
+                        bridgeTextSk = "Zlato dorazí potichu k bránam kláštora už nasledujúce ráno."
+                    )
+                )
+            )
+        ),
+
+        // ============ PHASE 2: INKVIZÍCIA A MOCENSKÉ BOJE (Ťahy 8-16) ============
+
+        EventNode(
+            id = "a2_grand_inquisitor",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.ACOLYTE,
+            condition = { it.notoriety > 30 || it.worldFlags.contains("HERETIC_KNOWLEDGE") },
+            titleEn = "The Arrival of the Grand Inquisitor",
+            titleSk = "Príchod Veľkého Inkvizítora",
+            textEn = "A black carriage bearing Inquisitor Malachai arrives in the courtyard. He hunts for traces of black magic and free thought, questioning every brother in turn.",
+            textSk = "Čierny kočiar s Inkvizítorom Malachaiom dorazil na nádvorie. Hľadá stopy čiernej mágie a voľnomyšlienkárstva. Vypočúva všetkých bratov v rade.",
+            location = "Cathedral",
+            npcName = "Inquisitor Malachai",
+            npcTitle = "Grand Inquisitor",
+            npcArchetype = "BISHOP",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Produce the manuscript and claim it belongs to the Bishop", textSk = "Vytiahnuť rukopis a vyhlásiť, že patrí Biskupovi",
+                    tagEn = "Betrayal", tagSk = "Zrada", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 5,
+                        resolutionTextEn = "You have no manuscript to show, and Malachai's questioning turns sharply toward you instead.",
+                        resolutionTextSk = "Nemáš žiadny rukopis na ukázanie a Malachaiovo vypočúvanie sa ostro obráti na teba.",
+                        bridgeTextEn = "An empty accusation only draws suspicion onto your own head.",
+                        bridgeTextSk = "Prázdne obvinenie priťahuje podozrenie len na tvoju vlastnú hlavu."
+                    ),
+                    conditionalOutcome = { world ->
+                        if (world.inventoryItemIds.contains("Forbidden_Manuscript")) {
+                            ChoiceConsequence(
+                                factionChanges = mapOf(Faction.CHURCH to 30, Faction.NOBILITY to -50),
+                                removeItems = setOf("Forbidden_Manuscript"),
+                                addFlags = setOf("BISHOP_BETRAYER"),
+                                resolutionTextEn = "Malachai's eyes gleam as he examines the heretical script - and orders the Bishop seized on the spot.",
+                                resolutionTextSk = "Malachaiovi zažiaria oči, keď preskúma kacírsky text - a nariadi Biskupa okamžite zatknúť.",
+                                bridgeTextEn = "The archive keys you once received now feel like a noose around your own future.",
+                                bridgeTextSk = "Kľúče od archívu, ktoré si kedysi dostal, teraz pôsobia ako slučka okolo tvojej vlastnej budúcnosti."
+                            )
+                        } else {
+                            ChoiceConsequence(
+                                notorietyChange = 5,
+                                resolutionTextEn = "You have no manuscript to show, and Malachai's questioning turns sharply toward you instead.",
+                                resolutionTextSk = "Nemáš žiadny rukopis na ukázanie a Malachaiovo vypočúvanie sa ostro obráti na teba.",
+                                bridgeTextEn = "An empty accusation only draws suspicion onto your own head.",
+                                bridgeTextSk = "Prázdne obvinenie priťahuje podozrenie len na tvoju vlastnú hlavu."
+                            )
+                        }
+                    }
+                ),
+                EventChoice(
+                    id = 2, textEn = "Burn the book in the furnace and swear loyalty to the cross", textSk = "Spáliť knihu v peci a prisahať vernosť na kríž",
+                    tagEn = "Renunciation", tagSk = "Zrieknutie", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = -15,
+                        removeItems = setOf("Forbidden_Manuscript"),
+                        removeFlags = setOf("HERETIC_KNOWLEDGE"),
+                        resolutionTextEn = "The pages curl and blacken in the furnace as you kneel and swear your oath anew.",
+                        resolutionTextSk = "Stránky sa v peci krútia a čiernejú, kým kľačíš a nanovo skladáš prísahu.",
+                        bridgeTextEn = "Malachai nods, satisfied, and moves on to question the next brother.",
+                        bridgeTextSk = "Malachai spokojne prikývne a presunie sa vypočúvať ďalšieho brata."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Secretly flee the monastery and join peasant renegades", textSk = "Tajne utiecť z kláštora a pridať sa k poddaným renegátom",
+                    tagEn = "Flight", tagSk = "Útek", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.CHURCH to -30, Faction.PEASANTS to 30),
+                        addFlags = setOf("RENEGADE_PRIEST"),
+                        resolutionTextEn = "You slip over the monastery wall in the confusion of the Inquisitor's search.",
+                        resolutionTextSk = "Prekĺzneš cez múr kláštora v zmätku Inkvizítorovho pátrania.",
+                        bridgeTextEn = "The peasants in the hills take you in without asking too many questions.",
+                        bridgeTextSk = "Poddaní v kopcoch ťa prijmú bez toho, aby sa priveľmi vypytovali."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "a2_excommunication",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.ACOLYTE,
+            condition = { (it.factions[Faction.CHURCH] ?: 50) > 50 || it.worldFlags.contains("LOYAL_INFORMER") },
+            titleEn = "The Excommunication of the Local Lord",
+            titleSk = "Exkomunikácia Miestneho Lorda",
+            textEn = "Lord Reginald refuses to pay his tithes. The Bishop wants to declare an interdict over the whole manor. The Lord secretly offers you a purse of gold to forge a papal bull in his favor.",
+            textSk = "Lord Reginald refuzuje platiť desiatky. Biskup chce vyhlásiť interdikt nad celým panstvom. Lord ti tajne ponúka mešec zlata, ak falšuješ pápežskú bulu v jeho prospech.",
+            location = "Castle",
+            npcName = "Lord Reginald",
+            npcTitle = "Tithe-Refusing Lord",
+            npcArchetype = "NOBLE",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Take the Lord's gold and forge a false papal bull", textSk = "Prijímať lordovo zlato a vyhotoviť falošnú bulu",
+                    tagEn = "Forgery", tagSk = "Falzifikát", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 70, factionChanges = mapOf(Faction.NOBILITY to 30, Faction.CHURCH to -40),
+                        addItems = setOf("Forged_Papal_Bull"),
+                        addFlags = setOf("LORD_PUPPET"),
+                        resolutionTextEn = "Your quill forges the papal seal with practiced precision, and Reginald's gold weighs heavy in your sleeve.",
+                        resolutionTextSk = "Tvoje brko s precíznou zručnosťou sfalšuje pápežskú pečať a Reginaldovo zlato ti ťaží rukáv.",
+                        bridgeTextEn = "The forged bull now sits folded against your chest, a secret weapon or a death sentence.",
+                        bridgeTextSk = "Sfalšovaná bula teraz leží zložená na tvojej hrudi - tajná zbraň alebo rozsudok smrti."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Publicly excommunicate him at Sunday mass", textSk = "Verejne ho exkomunikovať na nedeľnej omši",
+                    tagEn = "Excommunication", tagSk = "Exkomunikácia", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        regionalTensionChange = 20, factionChanges = mapOf(Faction.CHURCH to 30, Faction.NOBILITY to -40),
+                        addFlags = setOf("CHURCH_CHAMPION"),
+                        resolutionTextEn = "Your voice rings through the nave as Reginald's name is struck from the rolls of the faithful.",
+                        resolutionTextSk = "Tvoj hlas sa nesie loďou katedrály, kým je Reginaldovo meno vyškrtnuté zo zoznamu veriacich.",
+                        bridgeTextEn = "The congregation gasps, and the Lord storms out in fury.",
+                        bridgeTextSk = "Zhromaždenie zalapá po dychu a Lord zúrivo odchádza."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Incite the poor to plunder the Lord's granaries", textSk = "Poštvať chudobu, aby vydrancovala lordove obilné sýpky",
+                    tagEn = "Incitement", tagSk = "Podnecovanie", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        regionalTensionChange = 40, factionChanges = mapOf(Faction.PEASANTS to 30),
+                        addFlags = setOf("HOLY_REBEL"),
+                        resolutionTextEn = "A whispered word to the right hungry ears sends the granary gates crashing open by nightfall.",
+                        resolutionTextSk = "Zašepkané slovo do správnych hladných uší privedie k tomu, že brány sýpky sa do súmraku s treskom otvoria.",
+                        bridgeTextEn = "Reginald's stores empty into desperate hands, and no one traces it back to you - yet.",
+                        bridgeTextSk = "Reginaldove zásoby sa vyprázdnia do zúfalých rúk a zatiaľ to k tebe nikto nevystopuje."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "a2_poisoned_wine",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.ACOLYTE,
+            condition = { it.worldFlags.contains("MONASTERY_SCHEMER") || it.worldFlags.contains("CHURCH_THIEF") },
+            titleEn = "Poison in the Monastery Wine",
+            titleSk = "Jed v Kláštornom Víne",
+            textEn = "You have discovered the Abbot plans to poison the Inquisitor at dinner, to cover up financial fraud and embezzled treasure.",
+            textSk = "Zistil si, že opát plánuje otravu Inkvizítora pri večeri, aby zakryl finančné podvody a spreneveru pokladu.",
+            location = "Cathedral",
+            npcName = "Abbot Corvin",
+            npcTitle = "Monastery Abbot",
+            npcArchetype = "ELDER",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Warn the Inquisitor and foil the assassination", textSk = "Varovať Inkvizítora a zmariť atentát",
+                    tagEn = "Warning", tagSk = "Varovanie", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.CHURCH to 40, Faction.PEASANTS to -30),
+                        addFlags = setOf("INQUISITION_FAVORITE"),
+                        resolutionTextEn = "Malachai's cup is quietly swapped moments before Corvin can act, and the Abbot's face drains of color.",
+                        resolutionTextSk = "Malachaiov pohár je potichu vymenený chvíľu predtým, než Corvin stihne konať, a Abbatova tvár stráca farbu.",
+                        bridgeTextEn = "The Inquisition now counts you among its most trusted informants.",
+                        bridgeTextSk = "Inkvizícia ťa teraz počíta medzi svojich najdôveryhodnejších informátorov."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Stay silent and take the Abbot's bribe", textSk = "Mlčať a vziať úplatok od opáta za mlčanie",
+                    tagEn = "Silence", tagSk = "Mlčanie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 40, notorietyChange = 20,
+                        addFlags = setOf("MURDER_COMPLICE"),
+                        resolutionTextEn = "Corvin's purse finds its way into your hands, and you say nothing as dinner is served.",
+                        resolutionTextSk = "Corvinov mešec sa dostane do tvojich rúk a mlčky sleduješ, ako sa podáva večera.",
+                        bridgeTextEn = "Whatever happens at the table tonight, your hands remain clean - technically.",
+                        bridgeTextSk = "Nech sa dnes pri stole stane čokoľvek, tvoje ruky zostávajú čisté - technicky."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Swap the cups and poison the Abbot himself", textSk = "Vymeniť poháre a otráviť samotného opáta",
+                    tagEn = "Murder", tagSk = "Vražda", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 25, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 30),
+                        addFlags = setOf("ABBOT_KILLER"),
+                        resolutionTextEn = "Corvin drinks from his own poisoned cup and slumps silently over the dinner table.",
+                        resolutionTextSk = "Corvin pije z vlastného otráveného pohára a ticho sa zosunie na večerný stôl.",
+                        bridgeTextEn = "The monastery's corruption dies with him - and so does any witness to yours.",
+                        bridgeTextSk = "Korupcia kláštora zomiera s ním - a s ňou aj akýkoľvek svedok tej tvojej."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "a2_holy_uprising",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.ACOLYTE,
+            condition = { it.regionalTension > 60 || it.worldFlags.contains("HOLY_REBEL") || it.worldFlags.contains("RENEGADE_PRIEST") },
+            titleEn = "The Holy Uprising in the Undercity",
+            titleSk = "Sväté Povstanie v Podhradí",
+            textEn = "Desperate peasants have surrounded the cathedral. They demand the church's treasures be distributed and corrupt priests burned. You stand at the cathedral portal.",
+            textSk = "Zúfalí poddaní obkľúčili katedrálu. Žiadajú rozdanie cirkevného cenného majetku a upálenie korupčných kňazov. Ty stojíš na portáli katedrály.",
+            location = "Cathedral",
+            npcName = "The Assembled Poor",
+            npcTitle = "Uprising",
+            npcArchetype = "PEASANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Open the gates, take the monstrance, and give gold to the poor", textSk = "Otvoriť brány, vybrať monštranciu a rozdať zlato chudobe",
+                    tagEn = "Redistribution", tagSk = "Prerozdelenie", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -50, factionChanges = mapOf(Faction.PEASANTS to 50, Faction.CHURCH to -80),
+                        addFlags = setOf("HERETIC_PROPHET"),
+                        resolutionTextEn = "Golden vessels spill into desperate hands as the crowd's roar turns to disbelieving joy.",
+                        resolutionTextSk = "Zlaté nádoby sa vysypú do zúfalých rúk, kým rev davu prechádza do neveriaceho jasotu.",
+                        bridgeTextEn = "You have broken every vow of your order tonight - and become something else entirely.",
+                        bridgeTextSk = "Dnes v noci si porušil každý sľub svojho rádu - a stal si sa niečím úplne iným."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Lead the church guards with a cross in hand and scatter the crowd", textSk = "Viesť cirkevné stráže s krížom v ruke a rozprášiť dav",
+                    tagEn = "Suppression", tagSk = "Potlačenie", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.CHURCH to 30, Faction.NOBILITY to 20, Faction.PEASANTS to -50),
+                        addFlags = setOf("BLOODY_INQUISITOR"),
+                        resolutionTextEn = "Raised steel and raised crosses drive the crowd back down the cathedral steps in terror.",
+                        resolutionTextSk = "Zdvihnutá oceľ a zdvihnuté kríže zaženú dav dolu katedrálnymi schodmi v hrôze.",
+                        bridgeTextEn = "Blood stains the cathedral steps, and your name is spoken with fear now.",
+                        bridgeTextSk = "Katedrálne schody sfarbuje krv a tvoje meno sa teraz vyslovuje so strachom."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Use the chaos, dress as a commoner, and flee with the treasury", textSk = "Využiť chaos, obliecť sa do šiat poddaného a utiecť s pokladnicou",
+                    tagEn = "Theft", tagSk = "Krádež", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 80, notorietyChange = 40,
+                        addFlags = setOf("SACRILEGIOUS_RUNAWAY"),
+                        resolutionTextEn = "In the roaring chaos, you slip out a side door in stolen rags, treasury sack in hand.",
+                        resolutionTextSk = "V hučiacom chaose vykĺzneš bočnými dverami v ukradnutých handrách, s vrecom z pokladnice v ruke.",
+                        bridgeTextEn = "By the time anyone thinks to count the coin, you are already miles away.",
+                        bridgeTextSk = "Kým niekoho napadne spočítať mince, ty si už míle odtiaľto."
+                    )
+                )
+            )
+        ),
+
+        // ============ PHASE 3: CIRKEVNÝ KLIMAX A SÚD VIERY (Ťahy 17-25) ============
+
+        EventNode(
+            id = "a3_inquisition_trial",
+            phase = EventPhase.PHASE_3,
+            originClass = OriginClass.ACOLYTE,
+            minTurn = 17, maxTurn = 24,
+            forcedPriority = true,
+            condition = { it.notoriety > 70 || it.worldFlags.contains("HERETIC_KNOWLEDGE") || it.worldFlags.contains("SACRILEGIOUS_RUNAWAY") },
+            titleEn = "The Inquisitorial Trial and the Torture Chamber",
+            titleSk = "Inkvizičný Súd a Mučiareň",
+            textEn = "You stand shackled in the cathedral's underground cell. The Inquisitor prepares heated tongs. He demands the names of your accomplices.",
+            textSk = "Stojíš spútaný v podzemnej kobke katedrály. Inkvizítor pripravuje rozpálené kliešte. Žiada mená spolupáchateľov.",
+            location = "Cathedral",
+            npcName = "Inquisitor Malachai",
+            npcTitle = "Grand Inquisitor",
+            npcArchetype = "BISHOP",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Betray the whole underworld and denounce the manor conspirators", textSk = "Vyzradiť celé podsvetie a udať panských sprisahancov",
+                    tagEn = "Betrayal", tagSk = "Zrada", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.PEASANTS to -40, Faction.CHURCH to 30),
+                        removeFlags = setOf("HERETIC_KNOWLEDGE"),
+                        addFlags = setOf("PENITENT_TRAITOR"),
+                        resolutionTextEn = "Names spill from your lips faster than Malachai can write them, and the tongs are set aside.",
+                        resolutionTextSk = "Mená sa ti valia z pier rýchlejšie, než ich Malachai stíha zapisovať, a kliešte sú odložené.",
+                        bridgeTextEn = "You are spared the iron, at the cost of everyone you once named a friend.",
+                        bridgeTextSk = "Ušetria ťa železa, za cenu každého, koho si kedysi nazýval priateľom."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Use the forged papal bull and claim you act by the Pope's will", textSk = "Použiť Forged_Papal_Bull a tvrdiť, že konáš z vôle Pápeža",
+                    tagEn = "Deception", tagSk = "Klamstvo", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 10,
+                        resolutionTextEn = "You have no papal seal to show, and Malachai's tongs draw closer to the fire.",
+                        resolutionTextSk = "Nemáš žiadnu pápežskú pečať na ukázanie a Malachaiove kliešte sa približujú k ohňu.",
+                        bridgeTextEn = "An empty claim before the Inquisition only invites worse suspicion.",
+                        bridgeTextSk = "Prázdne tvrdenie pred Inkvizíciou vyvoláva len horšie podozrenie."
+                    ),
+                    conditionalOutcome = { world ->
+                        if (world.inventoryItemIds.contains("Forged_Papal_Bull")) {
+                            ChoiceConsequence(
+                                notorietyChange = -40,
+                                removeItems = setOf("Forged_Papal_Bull"),
+                                addFlags = setOf("PAPAL_PROTECTION"),
+                                resolutionTextEn = "Malachai's hand freezes at the sight of the papal seal, and the tongs are lowered in uncertainty.",
+                                resolutionTextSk = "Malachaiova ruka strne pri pohľade na pápežskú pečať a kliešte sú neisto spustené.",
+                                bridgeTextEn = "No inquisitor dares act against the Pope's own word - forged or not.",
+                                bridgeTextSk = "Žiadny inkvizítor sa neodváži konať proti slovu samotného pápeža - sfalšovanému, či nie."
+                            )
+                        } else {
+                            ChoiceConsequence(
+                                notorietyChange = 10,
+                                resolutionTextEn = "You have no papal seal to show, and Malachai's tongs draw closer to the fire.",
+                                resolutionTextSk = "Nemáš žiadnu pápežskú pečať na ukázanie a Malachaiove kliešte sa približujú k ohňu.",
+                                bridgeTextEn = "An empty claim before the Inquisition only invites worse suspicion.",
+                                bridgeTextSk = "Prázdne tvrdenie pred Inkvizíciou vyvoláva len horšie podozrenie."
+                            )
+                        }
+                    }
+                ),
+                EventChoice(
+                    id = 3, textEn = "Scream heretical lies and spit on the cross", textSk = "Vreštiť kacírske klamstvá a pľuť na kríž",
+                    tagEn = "Defiance", tagSk = "Vzdor", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        regionalTensionChange = 50, notorietyChange = 40,
+                        addFlags = setOf("CONDEMNED_HERETIC"),
+                        resolutionTextEn = "Spittle strikes the crucifix as your defiant screams echo through the stone chamber.",
+                        resolutionTextSk = "Slina zasiahne krucifix, kým tvoje vzdorné výkriky sa ozývajú kamennou komorou.",
+                        bridgeTextEn = "There is no trial left to have - only the sentence.",
+                        bridgeTextSk = "Už neostáva žiadny súd - len rozsudok."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "a3_monastery_plague",
+            phase = EventPhase.PHASE_3,
+            originClass = OriginClass.ACOLYTE,
+            minTurn = 18, maxTurn = 22,
+            forcedPriority = true,
+            titleEn = "The Great Plague in the Monastery",
+            titleSk = "Veľký Morový Mor v Kláštore",
+            textEn = "Plague has breached the monastery walls. Brothers are dying in droves. The Abbot and the Inquisitor both lie feverish. The keys to the monastery treasury rest on the abandoned Bishop's chair.",
+            textSk = "Mor prenikol za kláštorné hradby. Bratstvá vymierajú. Opát aj Inkvizítor ležia v horúčkach. Kľúče od kláštornej pokladnice ležia na stolici opusteného Biskupa.",
+            location = "Cathedral",
+            npcName = "The Dying Brotherhood",
+            npcTitle = "Plague Ward",
+            npcArchetype = "ELDER",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Stay and tend the sick until you collapse from exhaustion", textSk = "Zostať a liečiť nemocných až do vlastného vysilenia",
+                    tagEn = "Sacrifice", tagSk = "Obeta", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -30, factionChanges = mapOf(Faction.PEASANTS to 50, Faction.CHURCH to 30),
+                        addFlags = setOf("MARTYR_OF_THE_PLAGUE"),
+                        resolutionTextEn = "You move from cot to cot until your legs finally give out beneath you, but not one soul dies unattended.",
+                        resolutionTextSk = "Prechádzaš od lôžka k lôžku, kým sa ti napokon nepodlomia nohy, no ani jedna duša nezomrie bez pomoci.",
+                        bridgeTextEn = "The brotherhood will speak your name in prayer for generations.",
+                        bridgeTextSk = "Bratstvo bude tvoje meno spomínať v modlitbách po generácie."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Break open the treasury, steal the holy relics, and flee", textSk = "Vylomiť pokladnicu, ukradnúť sväté relikvie a utiecť",
+                    tagEn = "Theft", tagSk = "Krádež", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 100, notorietyChange = 30, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 30),
+                        addItems = setOf("Holy_Arka_Relic"),
+                        addFlags = setOf("DESERTER_MONK"),
+                        resolutionTextEn = "The treasury lock splinters under a stolen crowbar, and you vanish into the plague-emptied roads with gold and relics alike.",
+                        resolutionTextSk = "Zámok pokladnice sa rozštiepi pod ukradnutou pákou a ty miznieš na morom vyprázdnených cestách so zlatom aj relikviami.",
+                        bridgeTextEn = "Behind you, the dying brotherhood never even notices what's missing.",
+                        bridgeTextSk = "Za tebou si umierajúce bratstvo ani nevšimne, čo chýba."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Lock the monastery gates and leave everyone inside to die", textSk = "Zamknúť brány kláštora a nechať všetkých vnútri zhorieť/zomrieť",
+                    tagEn = "Abandonment", tagSk = "Opustenie", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.NOBILITY to 20, Faction.PEASANTS to -50),
+                        addFlags = setOf("COLD_SANCTIFIER"),
+                        resolutionTextEn = "The iron gates groan shut, sealing the plague and the brotherhood together behind you.",
+                        resolutionTextSk = "Železné brány so zaskrípaním zapadnú a zapečatia mor aj bratstvo spolu za tebou.",
+                        bridgeTextEn = "The manor praises your caution. The dead behind the gates have no voice to disagree.",
+                        bridgeTextSk = "Panstvo chváli tvoju opatrnosť. Mŕtvi za bránami nemajú hlas na to, aby nesúhlasili."
+                    )
                 )
             )
         )

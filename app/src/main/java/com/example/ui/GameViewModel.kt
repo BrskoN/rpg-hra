@@ -335,11 +335,58 @@ class GameViewModel @JvmOverloads constructor(
 
     fun evaluateChapterEnd(): List<OriginClass> {
         val currentWorld = _worldState.value
-        return if (currentWorld.activeOrigin == OriginClass.PEASANT) {
-            evaluatePeasantChapterEnd(currentWorld)
-        } else {
-            evaluateLegacyChapterEnd(currentWorld)
+        return when (currentWorld.activeOrigin) {
+            OriginClass.PEASANT -> evaluatePeasantChapterEnd(currentWorld)
+            OriginClass.ACOLYTE -> evaluateAcolyteChapterEnd(currentWorld)
+            else -> evaluateLegacyChapterEnd(currentWorld)
         }
+    }
+
+    /**
+     * Turn 25 climax evaluation for the Acolyte EventDeck: Bishop/Inquisitor/Outlaw-King ascension,
+     * Acolyte/Chaplain neutral stagnation, or Prisoner/Beggar/Outcast descension.
+     */
+    private fun evaluateAcolyteChapterEnd(currentWorld: WorldState): List<OriginClass> {
+        val gold = currentWorld.gold
+        val notoriety = currentWorld.notoriety
+        val churchRep = currentWorld.factions[Faction.CHURCH] ?: 50
+        val nobilityRep = currentWorld.factions[Faction.NOBILITY] ?: 50
+        val peasantsRep = currentWorld.factions[Faction.PEASANTS] ?: 50
+        val flags = currentWorld.worldFlags
+
+        val isDescension = notoriety >= 80 || gold <= 0 ||
+                flags.contains("CONDEMNED_HERETIC") || flags.contains("DESERTER_MONK") || flags.contains("SACRILEGIOUS_RUNAWAY")
+
+        if (isDescension) {
+            return listOf(OriginClass.PRISONER, OriginClass.BEGGAR, OriginClass.OUTCAST)
+        }
+
+        val isAscension = churchRep >= 60 || gold >= 80 ||
+                flags.contains("BISHOP_BETRAYER") || flags.contains("INQUISITION_FAVORITE") ||
+                flags.contains("CHURCH_CHAMPION") || flags.contains("PAPAL_PROTECTION") || flags.contains("BLOODY_INQUISITOR")
+
+        val available = mutableListOf<OriginClass>()
+
+        if (isAscension) {
+            if (flags.contains("BISHOP_BETRAYER") || churchRep >= 60) {
+                available.add(OriginClass.BISHOP)
+            }
+            if (flags.contains("BLOODY_INQUISITOR") || flags.contains("INQUISITION_FAVORITE")) {
+                available.add(OriginClass.KNIGHT)
+            }
+            if (flags.contains("HERETIC_PROPHET") && peasantsRep >= 60) {
+                available.add(OriginClass.OUTLAW_KING)
+            }
+        }
+
+        if (available.isEmpty()) {
+            available.add(OriginClass.ACOLYTE)
+            if (flags.contains("LORD_PUPPET") || nobilityRep > 50) {
+                available.add(OriginClass.GUILD_APPRENTICE)
+            }
+        }
+
+        return available.distinct()
     }
 
     /**
