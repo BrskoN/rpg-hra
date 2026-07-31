@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -115,7 +116,7 @@ fun TopStatsBar(
                             color = InkDark,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.5.sp,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             modifier = Modifier.testTag("social_class_text")
                         )
                     }

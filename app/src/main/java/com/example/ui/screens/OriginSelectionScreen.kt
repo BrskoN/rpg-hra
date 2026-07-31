@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -138,7 +139,7 @@ fun OriginSelectionScreen(
                 color = AgedGold,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Serif,
+                fontFamily = MedievalTitle,
                 letterSpacing = 2.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.testTag("game_title_banner")
@@ -150,7 +151,7 @@ fun OriginSelectionScreen(
                 text = if (selectedLanguage == AppLanguage.SLOVAK) "Temné stredoveké RPG príčinného osudu a frakčných rivalít" else "A Dark Medieval RPG of Causal Fate and Faction Rivalries",
                 color = LightInk.copy(alpha = 0.85f),
                 fontSize = 12.5.sp,
-                fontFamily = FontFamily.Serif,
+                fontFamily = MedievalTitle,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
@@ -183,7 +184,7 @@ fun OriginSelectionScreen(
                                 color = AgedGold,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Serif,
+                                fontFamily = MedievalTitle,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
@@ -195,7 +196,7 @@ fun OriginSelectionScreen(
                             color = AgedBone,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
 
                         Spacer(modifier = Modifier.height(4.dp))
@@ -204,7 +205,7 @@ fun OriginSelectionScreen(
                             text = if (selectedLanguage == AppLanguage.SLOVAK) "🪙 Zlato: ${savedWorldState.gold}  |  ❤️ Zdravie: ${savedWorldState.health}/${savedWorldState.maxHealth}  |  ⚡ Napätie: ${savedWorldState.regionalTension}/100" else "🪙 Gold: ${savedWorldState.gold}  |  ❤️ Health: ${savedWorldState.health}/${savedWorldState.maxHealth}  |  ⚡ Tension: ${savedWorldState.regionalTension}/100",
                             color = LightInk,
                             fontSize = 12.sp,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
 
                         Spacer(modifier = Modifier.height(14.dp))
@@ -225,7 +226,7 @@ fun OriginSelectionScreen(
                                 text = if (selectedLanguage == AppLanguage.SLOVAK) "⚔️ POKRAČOVAŤ V PRÍBEHU" else "⚔️ CONTINUE LEGACY",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Serif,
+                                fontFamily = MedievalTitle,
                                 letterSpacing = 1.sp
                             )
                         }
@@ -239,7 +240,7 @@ fun OriginSelectionScreen(
                     color = AgedGold,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = MedievalTitle,
                     letterSpacing = 1.sp,
                     textAlign = TextAlign.Center
                 )
@@ -251,7 +252,7 @@ fun OriginSelectionScreen(
                     color = AgedGold,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = MedievalTitle,
                     letterSpacing = 1.sp,
                     textAlign = TextAlign.Center
                 )
@@ -325,7 +326,7 @@ private fun OriginTarotCard(
                             color = AgedGold,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -337,7 +338,7 @@ private fun OriginTarotCard(
                         color = DarkInk,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Serif
+                        fontFamily = MedievalTitle
                     )
                 }
             }
@@ -348,7 +349,7 @@ private fun OriginTarotCard(
                 text = description,
                 color = DarkInk.copy(alpha = 0.9f),
                 fontSize = 12.5.sp,
-                fontFamily = FontFamily.Serif,
+                fontFamily = MedievalTitle,
                 lineHeight = 17.sp
             )
 
@@ -393,7 +394,7 @@ private fun OriginTarotCard(
                     text = if (selectedLanguage == AppLanguage.SLOVAK) "ZAČAŤ AKO ${title.uppercase()}" else "BEGIN AS ${title.uppercase()}",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = MedievalTitle,
                     letterSpacing = 1.sp
                 )
             }
@@ -416,14 +417,14 @@ private fun StatBadge(label: String, value: String) {
                 text = label,
                 color = AgedGold,
                 fontSize = 9.sp,
-                fontFamily = FontFamily.Serif,
+                fontFamily = MedievalTitle,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = value,
                 color = LightInk,
                 fontSize = 11.5.sp,
-                fontFamily = FontFamily.Serif,
+                fontFamily = MedievalTitle,
                 fontWeight = FontWeight.ExtraBold
             )
         }

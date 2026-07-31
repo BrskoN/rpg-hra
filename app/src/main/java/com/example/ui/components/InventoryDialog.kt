@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -80,7 +81,7 @@ fun InventoryDialog(
                             color = InkDark,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                     }
 
@@ -105,7 +106,7 @@ fun InventoryDialog(
                             color = MedievalCrimson,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -116,7 +117,7 @@ fun InventoryDialog(
                                 text = "No properties owned yet. Acquire fiefs, shops, or taverns to earn passive gold!",
                                 color = InkMedium,
                                 fontSize = 12.sp,
-                                fontFamily = FontFamily.Serif
+                                fontFamily = MedievalTitle
                             )
                         }
                     } else {
@@ -139,13 +140,13 @@ fun InventoryDialog(
                                             color = InkDark,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.5.sp,
-                                            fontFamily = FontFamily.Serif
+                                            fontFamily = MedievalTitle
                                         )
                                         Text(
                                             text = asset.description,
                                             color = InkMedium,
                                             fontSize = 11.5.sp,
-                                            fontFamily = FontFamily.Serif
+                                            fontFamily = MedievalTitle
                                         )
                                     }
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -168,7 +169,7 @@ fun InventoryDialog(
                             color = MedievalCrimson,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -179,7 +180,7 @@ fun InventoryDialog(
                                 text = "Your travel pack is empty.",
                                 color = InkMedium,
                                 fontSize = 12.sp,
-                                fontFamily = FontFamily.Serif
+                                fontFamily = MedievalTitle
                             )
                         }
                     } else {
@@ -202,13 +203,13 @@ fun InventoryDialog(
                                             color = InkDark,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.5.sp,
-                                            fontFamily = FontFamily.Serif
+                                            fontFamily = MedievalTitle
                                         )
                                         Text(
                                             text = item.description,
                                             color = InkMedium,
                                             fontSize = 11.5.sp,
-                                            fontFamily = FontFamily.Serif
+                                            fontFamily = MedievalTitle
                                         )
                                     }
                                     if (item.statBonus.isNotBlank()) {

@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -125,7 +126,7 @@ fun NpcPortraitView(
                             color = Color(0xFFFFF8EE),
                             fontSize = 10.5.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                         )
                     }
@@ -150,7 +151,7 @@ fun NpcPortraitView(
                             color = DarkInk,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             textAlign = TextAlign.Center,
                             maxLines = 1
                         )
@@ -160,7 +161,7 @@ fun NpcPortraitView(
                             color = MedievalCrimson,
                             fontSize = 11.5.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             textAlign = TextAlign.Center,
                             maxLines = 1
                         )
@@ -185,7 +186,7 @@ fun NpcPortraitView(
                                 color = Color(0xFFFFD700),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                fontFamily = FontFamily.Serif
+                                fontFamily = MedievalTitle
                             )
                         }
                     }

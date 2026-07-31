@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -100,7 +101,7 @@ fun HandOfCardsView(
                     color = AgedGold,
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = MedievalTitle,
                     letterSpacing = 1.sp
                 )
             }
@@ -299,7 +300,7 @@ private fun InteractiveCardItem(
                         fontSize = computedFontSize,
                         lineHeight = computedLineHeight,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = MedievalTitle,
                         color = if (isEnabled) DarkInk else Color(0xFF6A6054),
                         textAlign = TextAlign.Center,
                         maxLines = 5,

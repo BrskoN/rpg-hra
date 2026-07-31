@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,7 +64,7 @@ fun ActionBar(
                 color = MedievalCrimson,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.ExtraBold,
-                fontFamily = FontFamily.Serif,
+                fontFamily = MedievalTitle,
                 letterSpacing = 1.2.sp,
                 modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
             )
@@ -123,7 +124,7 @@ fun ActionBar(
                             text = option.text,
                             fontSize = 13.5.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             color = if (isEnabled) InkDark else Color(0xFF7C6C5E),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,

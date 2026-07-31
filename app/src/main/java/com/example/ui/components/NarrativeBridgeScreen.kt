@@ -26,6 +26,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
+import com.example.ui.theme.ManuscriptBody
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -90,7 +92,7 @@ fun NarrativeBridgeScreen(
                             color = AgedGold,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
@@ -101,9 +103,9 @@ fun NarrativeBridgeScreen(
                     Text(
                         text = bridgeText,
                         color = DarkInk,
-                        fontSize = 16.sp,
-                        lineHeight = 24.sp,
-                        fontFamily = FontFamily.Serif,
+                        fontSize = 17.sp,
+                        lineHeight = 25.sp,
+                        fontFamily = ManuscriptBody,
                         fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                         textAlign = TextAlign.Center
                     )
@@ -128,7 +130,7 @@ fun NarrativeBridgeScreen(
                             text = if (selectedLanguage == AppLanguage.SLOVAK) "POKRAČOVAŤ V CESTE ➔" else "CONTINUE PATH ➔",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             letterSpacing = 2.sp
                         )
                     }

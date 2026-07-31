@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -93,7 +94,7 @@ fun TopHeaderBar(
                         color = AgedGold,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = MedievalTitle,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -119,7 +120,7 @@ fun TopHeaderBar(
                         color = Color(0xFFFFD700),
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        fontFamily = FontFamily.Serif
+                        fontFamily = MedievalTitle
                     )
                 }
             }
@@ -143,7 +144,7 @@ fun TopHeaderBar(
                         color = Color(0xFFFF8888),
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        fontFamily = FontFamily.Serif
+                        fontFamily = MedievalTitle
                     )
                 }
             }
@@ -163,7 +164,7 @@ fun TopHeaderBar(
                     color = AgedGold,
                     fontSize = 10.5.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = MedievalTitle,
                     modifier = Modifier.padding(horizontal = 5.dp, vertical = 4.dp)
                 )
             }
@@ -186,7 +187,7 @@ fun TopHeaderBar(
                         color = Color.White,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Serif
+                        fontFamily = MedievalTitle
                     )
                 }
             }
@@ -211,7 +212,7 @@ fun TopHeaderBar(
                         color = AgedGold,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = MedievalTitle,
                         modifier = Modifier.padding(bottom = 6.dp)
                     )
 
@@ -226,21 +227,21 @@ fun TopHeaderBar(
                             color = Color(0xFF81D4FA),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                         Text(
                             text = if (selectedLanguage == AppLanguage.SLOVAK) "⚡ Napätie: $regionalTension/100" else "⚡ Tension: $regionalTension/100",
                             color = if (regionalTension > 70) MedievalCrimson else AgedGold,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                         Text(
                             text = if (selectedLanguage == AppLanguage.SLOVAK) "👁️ Hľadanosť: $notoriety/100" else "👁️ Notoriety: $notoriety/100",
                             color = Color(0xFFFFB74D),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                     }
 
@@ -251,7 +252,7 @@ fun TopHeaderBar(
                         color = AgedGold,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = MedievalTitle,
                         modifier = Modifier.padding(bottom = 6.dp)
                     )
 
@@ -268,7 +269,7 @@ fun TopHeaderBar(
                                 text = "${faction.iconSymbol} $factionName",
                                 color = LightInk,
                                 fontSize = 11.sp,
-                                fontFamily = FontFamily.Serif,
+                                fontFamily = MedievalTitle,
                                 modifier = Modifier.width(110.dp)
                             )
                             LinearProgressIndicator(
@@ -289,7 +290,7 @@ fun TopHeaderBar(
                                 color = LightInk,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Serif,
+                                fontFamily = MedievalTitle,
                                 modifier = Modifier.width(30.dp)
                             )
                         }

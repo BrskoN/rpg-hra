@@ -29,6 +29,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
+import com.example.ui.theme.ManuscriptBody
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -90,7 +92,7 @@ fun LegacyEndgameScreen(
                 color = AgedGold,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Serif,
+                fontFamily = MedievalTitle,
                 letterSpacing = 2.sp,
                 textAlign = TextAlign.Center
             )
@@ -101,7 +103,7 @@ fun LegacyEndgameScreen(
                 text = if (isSlovak) "Vaše činy v ríši zmenili tok dejín. Skontrolujte svoju stopu vo svete a vstúpte do novej úlohy." else "Your deeds in the realm have altered the course of history. Review your world mark and ascend into your next role.",
                 color = LightInk.copy(alpha = 0.85f),
                 fontSize = 12.5.sp,
-                fontFamily = FontFamily.Serif,
+                fontFamily = MedievalTitle,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
@@ -128,7 +130,7 @@ fun LegacyEndgameScreen(
                         color = DarkInk,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = MedievalTitle,
                         letterSpacing = 1.sp
                     )
 
@@ -139,7 +141,7 @@ fun LegacyEndgameScreen(
                             text = if (isSlovak) "• Zatiaľ žiadne významné znaky sveta. Vaša cesta sa stále rozvíja." else "• No monumental world flags earned yet. Your journey is still unfolding.",
                             color = DarkInk.copy(alpha = 0.75f),
                             fontSize = 12.sp,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                     } else {
                         worldState.worldFlags.forEach { flag ->
@@ -165,7 +167,7 @@ fun LegacyEndgameScreen(
                                         color = AgedGold,
                                         fontSize = 11.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Serif
+                                        fontFamily = MedievalTitle
                                     )
                                 }
                             }
@@ -181,7 +183,7 @@ fun LegacyEndgameScreen(
                 color = AgedGold,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Serif,
+                fontFamily = MedievalTitle,
                 letterSpacing = 1.5.sp,
                 textAlign = TextAlign.Center
             )
@@ -296,7 +298,7 @@ private fun AscensionRoleCard(
                             color = categoryTextColor,
                             fontSize = 9.5.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -308,14 +310,14 @@ private fun AscensionRoleCard(
                         color = DarkInk,
                         fontSize = 16.5.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Serif
+                        fontFamily = MedievalTitle
                     )
 
                     Text(
                         text = subtitle.uppercase(),
                         color = DarkInk.copy(alpha = 0.7f),
                         fontSize = 10.sp,
-                        fontFamily = FontFamily.Serif
+                        fontFamily = MedievalTitle
                     )
                 }
             }
@@ -325,9 +327,9 @@ private fun AscensionRoleCard(
             Text(
                 text = description,
                 color = DarkInk.copy(alpha = 0.9f),
-                fontSize = 12.sp,
-                fontFamily = FontFamily.Serif,
-                lineHeight = 16.sp
+                fontSize = 13.5.sp,
+                fontFamily = ManuscriptBody,
+                lineHeight = 18.sp
             )
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -337,7 +339,7 @@ private fun AscensionRoleCard(
                 color = if (isDescension) MedievalCrimson else if (isAscension) DarkInk else DarkInk.copy(alpha = 0.8f),
                 fontSize = 10.5.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Serif
+                fontFamily = MedievalTitle
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -358,7 +360,7 @@ private fun AscensionRoleCard(
                     text = buttonActionText,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = MedievalTitle,
                     letterSpacing = 1.sp
                 )
             }

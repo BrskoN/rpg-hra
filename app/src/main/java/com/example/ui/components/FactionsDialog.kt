@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,7 +78,7 @@ fun FactionsDialog(
                             color = InkDark,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                     }
 
@@ -133,7 +134,7 @@ fun FactionsDialog(
                                             color = MedievalCrimson,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.5.sp,
-                                            fontFamily = FontFamily.Serif
+                                            fontFamily = MedievalTitle
                                         )
                                     }
 
@@ -142,7 +143,7 @@ fun FactionsDialog(
                                         color = progressColor,
                                         fontWeight = FontWeight.ExtraBold,
                                         fontSize = 12.sp,
-                                        fontFamily = FontFamily.Serif
+                                        fontFamily = MedievalTitle
                                     )
                                 }
 
@@ -152,7 +153,7 @@ fun FactionsDialog(
                                     text = faction.description,
                                     color = InkDark,
                                     fontSize = 11.5.sp,
-                                    fontFamily = FontFamily.Serif
+                                    fontFamily = MedievalTitle
                                 )
 
                                 Spacer(modifier = Modifier.height(8.dp))

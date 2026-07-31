@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -105,7 +106,7 @@ fun StoryCard(
                                 color = Color(0xFFFFF8EE),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Serif
+                                fontFamily = MedievalTitle
                             )
                         }
                     }
@@ -152,7 +153,7 @@ fun StoryCard(
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             fontStyle = FontStyle.Italic,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                     }
                 } else if (event != null) {
@@ -162,7 +163,7 @@ fun StoryCard(
                         color = InkDark,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = MedievalTitle,
                         modifier = Modifier.testTag("story_title")
                     )
 
@@ -174,7 +175,7 @@ fun StoryCard(
                         color = InkDark,
                         fontSize = 16.sp,
                         lineHeight = 25.sp,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = MedievalTitle,
                         modifier = Modifier.testTag("story_text")
                     )
 

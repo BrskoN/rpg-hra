@@ -30,6 +30,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
+import com.example.ui.theme.ManuscriptBody
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -88,7 +90,7 @@ fun ResolutionOverlay(
                             color = AgedGold,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                         )
                     }
@@ -99,9 +101,9 @@ fun ResolutionOverlay(
                     Text(
                         text = resolutionText,
                         color = DarkInk,
-                        fontSize = 15.sp,
-                        lineHeight = 22.sp,
-                        fontFamily = FontFamily.Serif,
+                        fontSize = 16.sp,
+                        lineHeight = 23.sp,
+                        fontFamily = ManuscriptBody,
                         fontWeight = FontWeight.Medium,
                         textAlign = TextAlign.Center
                     )
@@ -125,7 +127,7 @@ fun ResolutionOverlay(
                                     color = AgedGold,
                                     fontSize = 10.5.sp,
                                     fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Serif
+                                    fontFamily = MedievalTitle
                                 )
 
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -141,7 +143,7 @@ fun ResolutionOverlay(
                                             color = if (isPositive) Color(0xFFFFD700) else Color(0xFFFF6B6B),
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Serif
+                                            fontFamily = MedievalTitle
                                         )
                                     }
 
@@ -152,7 +154,7 @@ fun ResolutionOverlay(
                                             color = if (isPositive) Color(0xFF2ECC71) else Color(0xFFFF6B6B),
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Serif
+                                            fontFamily = MedievalTitle
                                         )
                                     }
                                 }
@@ -170,7 +172,7 @@ fun ResolutionOverlay(
                                                 color = if (delta > 0) Color(0xFFFF6B6B) else Color(0xFF2ECC71),
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                fontFamily = FontFamily.Serif
+                                                fontFamily = MedievalTitle
                                             )
                                         }
 
@@ -181,7 +183,7 @@ fun ResolutionOverlay(
                                                 color = Color(0xFFFFB74D),
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                fontFamily = FontFamily.Serif
+                                                fontFamily = MedievalTitle
                                             )
                                         }
                                     }
@@ -195,7 +197,7 @@ fun ResolutionOverlay(
                                             text = "${if (isPositive) "+" else ""}$delta Rep ($factionName)",
                                             color = if (isPositive) Color(0xFF2ECC71) else Color(0xFFFF6B6B),
                                             fontSize = 12.sp,
-                                            fontFamily = FontFamily.Serif
+                                            fontFamily = MedievalTitle
                                         )
                                     }
                                 }
@@ -223,7 +225,7 @@ fun ResolutionOverlay(
                             text = if (selectedLanguage == AppLanguage.SLOVAK) "PRIJAŤ OSUD" else "ACCEPT FATE",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif,
+                            fontFamily = MedievalTitle,
                             letterSpacing = 2.sp
                         )
                     }

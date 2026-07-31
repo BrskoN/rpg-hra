@@ -15,7 +15,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
@@ -23,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.AgedGold
 import com.example.ui.theme.AntiqueGold
+import com.example.ui.theme.BlackletterDisplay
 import com.example.ui.theme.DarkCanvasSurface
 import com.example.ui.theme.DeepCharcoal
 
@@ -82,7 +82,7 @@ fun IlluminatedInitial(
                 color = textColor,
                 fontSize = fontSize,
                 fontWeight = FontWeight.ExtraBold,
-                fontFamily = FontFamily.Serif,
+                fontFamily = BlackletterDisplay,
                 textAlign = TextAlign.Center
             )
         }

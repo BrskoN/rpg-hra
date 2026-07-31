@@ -30,6 +30,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
+import com.example.ui.theme.ManuscriptBody
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -108,7 +110,7 @@ fun NarrativeBannerView(
                         fontSize = 14.5.sp,
                         fontWeight = FontWeight.Bold,
                         fontStyle = FontStyle.Italic,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = MedievalTitle,
                         modifier = Modifier.alpha(pulseAlpha)
                     )
                     Spacer(modifier = Modifier.height(10.dp))
@@ -149,7 +151,7 @@ fun NarrativeBannerView(
                                 color = DarkInk,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                fontFamily = FontFamily.Serif,
+                                fontFamily = MedievalTitle,
                                 modifier = Modifier
                                     .weight(1f)
                                     .testTag("story_title")
@@ -162,9 +164,9 @@ fun NarrativeBannerView(
                     Text(
                         text = storyText,
                         color = DarkInk,
-                        fontSize = 14.5.sp,
-                        lineHeight = 22.sp,
-                        fontFamily = FontFamily.Serif,
+                        fontSize = 15.5.sp,
+                        lineHeight = 23.sp,
+                        fontFamily = ManuscriptBody,
                         modifier = Modifier.testTag("story_text")
                     )
                 }

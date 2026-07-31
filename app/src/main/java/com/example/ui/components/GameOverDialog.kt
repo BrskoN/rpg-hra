@@ -26,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
+import com.example.ui.theme.ManuscriptBody
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -80,7 +82,7 @@ fun GameOverDialog(
                     color = if (worldState.isVictory) MedievalCrimson else Color(0xFFB22222),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = MedievalTitle,
                     textAlign = TextAlign.Center
                 )
 
@@ -89,9 +91,10 @@ fun GameOverDialog(
                 Text(
                     text = worldState.gameOverReason ?: if (isSlovak) "Váš príbeh v kráľovstve sa naplnil." else "Your tale in the kingdom has drawn to a close.",
                     color = DarkInk,
-                    fontSize = 14.5.sp,
-                    lineHeight = 21.sp,
-                    fontFamily = FontFamily.Serif,
+                    fontSize = 15.5.sp,
+                    lineHeight = 22.sp,
+                    fontFamily = ManuscriptBody,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                     textAlign = TextAlign.Center
                 )
 
@@ -118,25 +121,25 @@ fun GameOverDialog(
                             text = if (isSlovak) "👑 Zvolený Pôvod: ${worldState.activeOrigin.getLocalizedTitle(worldState.selectedLanguage)}" else "👑 Chosen Origin: ${worldState.activeOrigin.title}",
                             color = DarkInk,
                             fontSize = 13.5.sp,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                         Text(
                             text = if (isSlovak) "🪙 Nahromadené Bohatstvo: ${worldState.gold} Zlata" else "🪙 Wealth Amassed: ${worldState.gold} Gold",
                             color = DarkInk,
                             fontSize = 13.5.sp,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                         Text(
                             text = if (isSlovak) "📖 Konečná Kapitola: ${worldState.currentChapter}" else "📖 Final Chapter: ${worldState.currentChapter}",
                             color = DarkInk,
                             fontSize = 13.5.sp,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                         Text(
                             text = if (isSlovak) "🏷️ Získané Znaky: ${worldState.worldFlags.size}" else "🏷️ Flags Triggered: ${worldState.worldFlags.size}",
                             color = DarkInk,
                             fontSize = 13.5.sp,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                     }
                 }
@@ -161,7 +164,7 @@ fun GameOverDialog(
                         text = if (isSlovak) "Začať Nový Príbeh" else "Begin New Origin",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Serif
+                        fontFamily = MedievalTitle
                     )
                 }
             }

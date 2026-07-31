@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import com.example.ui.theme.MedievalTitle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,7 +79,7 @@ fun ChronicleDialog(
                             color = InkDark,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                     }
 
@@ -106,7 +107,7 @@ fun ChronicleDialog(
                             color = InkMedium,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
-                            fontFamily = FontFamily.Serif
+                            fontFamily = MedievalTitle
                         )
                     }
                 } else {
@@ -131,7 +132,7 @@ fun ChronicleDialog(
                                             color = MedievalCrimson,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 14.sp,
-                                            fontFamily = FontFamily.Serif
+                                            fontFamily = MedievalTitle
                                         )
                                     }
 
@@ -142,7 +143,7 @@ fun ChronicleDialog(
                                         color = InkDark,
                                         fontSize = 12.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Serif
+                                        fontFamily = MedievalTitle
                                     )
 
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -152,7 +153,7 @@ fun ChronicleDialog(
                                         color = InkDark,
                                         fontSize = 12.5.sp,
                                         lineHeight = 17.sp,
-                                        fontFamily = FontFamily.Serif
+                                        fontFamily = MedievalTitle
                                     )
 
                                     if (entry.statChangesText.isNotBlank()) {
