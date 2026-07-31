@@ -116,7 +116,8 @@ class GameViewModel @JvmOverloads constructor(
             lastBridgeText = null,
             lastChosenOptionText = null,
             isGameOver = false,
-            inventoryItemIds = if (origin == OriginClass.LESSER_NOBLE) setOf("Ancestral_Sword") else emptySet()
+            inventoryItemIds = if (origin == OriginClass.LESSER_NOBLE) setOf("Ancestral_Sword") else emptySet(),
+            attributes = origin.initialAttributes
         )
         _worldState.value = initialWorld
         _isOriginSelected.value = true
@@ -303,7 +304,14 @@ class GameViewModel @JvmOverloads constructor(
                             this[key] = ((this[key] ?: 0) + delta).coerceIn(0, 100)
                         }
                     }
-                else currentWorld.hiddenInfluences
+                else currentWorld.hiddenInfluences,
+                attributes = if (resolvedDeckConsequence != null)
+                    currentWorld.attributes.toMutableMap().apply {
+                        resolvedDeckConsequence.attributeChanges.forEach { (key, delta) ->
+                            this[key] = ((this[key] ?: 40) + delta).coerceIn(0, 100)
+                        }
+                    }
+                else currentWorld.attributes
             )
 
             _worldState.value = updatedWorld
@@ -697,9 +705,10 @@ class GameViewModel @JvmOverloads constructor(
             var deckWorldUpdate: WorldState = world
 
             if (deckNode != null) {
-                // Never displace a forced story/crisis beat with a bonus vignette - only ordinary
-                // sandbox turns are eligible, and only when the AI call actually succeeds.
-                val spiceResponse = if (!deckNode.forcedPriority && kotlin.random.Random.nextFloat() < SPICE_EVENT_CHANCE) {
+                // Only nodes explicitly marked flavorEligible can ever be displaced by a bonus
+                // vignette - forced beats and any other load-bearing/gating card are untouchable,
+                // so a spice roll can never swallow a causally important turn.
+                val spiceResponse = if (deckNode.flavorEligible && kotlin.random.Random.nextFloat() < SPICE_EVENT_CHANCE) {
                     repository.getSpiceEvent(world)
                 } else null
 
@@ -742,8 +751,13 @@ class GameViewModel @JvmOverloads constructor(
     }
 
     companion object {
-        /** Chance per eligible sandbox turn that an AI-generated bonus vignette replaces the usual authored pick. */
-        private const val SPICE_EVENT_CHANCE = 0.25f
+        /**
+         * Chance per eligible sandbox turn that an AI-generated bonus vignette replaces the usual
+         * authored pick. Only nodes marked flavorEligible are ever offered up for this roll now, so
+         * the chance was raised from the old 0.25 - it no longer risks displacing story-critical
+         * turns, only the handful of cards explicitly authored as safe, self-contained filler.
+         */
+        private const val SPICE_EVENT_CHANCE = 0.55f
         /** Fractional jitter applied to authored gold/health deltas so repeat playthroughs of the same card don't feel numerically identical. */
         private const val CONSEQUENCE_JITTER = 0.15f
     }

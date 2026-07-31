@@ -25,6 +25,8 @@ data class ChoiceConsequence(
     val notorietyChange: Int = 0,
     val factionChanges: Map<Faction, Int> = emptyMap(),
     val influenceChanges: Map<String, Int> = emptyMap(),
+    /** RPG attribute growth (MIGHT/CUNNING/CHARISMA), applied the same way as influenceChanges. */
+    val attributeChanges: Map<String, Int> = emptyMap(),
     val addFlags: Set<String> = emptySet(),
     val removeFlags: Set<String> = emptySet(),
     val addItems: Set<String> = emptySet(),
@@ -35,6 +37,25 @@ data class ChoiceConsequence(
     val bridgeTextSk: String
 )
 
+/**
+ * An offline, attribute-modified dice check attached to a risky EventChoice. The player's
+ * [attribute] score shifts the success chance (higher score = better odds), but never guarantees
+ * either outcome (clamped 10%-90%) - the same authored card can genuinely play out differently
+ * from one run to the next, and investing in an attribute visibly raises your odds over time.
+ */
+data class SkillCheck(
+    val attribute: SkillAttribute,
+    /** Attribute value at which the check is a 50/50 coin flip. */
+    val difficulty: Int = 50,
+    val successConsequence: ChoiceConsequence,
+    val failureConsequence: ChoiceConsequence
+) {
+    fun successChancePercent(world: WorldState): Double {
+        val attrValue = world.attributes[attribute.name] ?: 40
+        return (50.0 + (attrValue - difficulty) * 0.6).coerceIn(10.0, 90.0)
+    }
+}
+
 data class EventChoice(
     val id: Int,
     val textEn: String,
@@ -42,12 +63,21 @@ data class EventChoice(
     val tagEn: String,
     val tagSk: String,
     val cardArchetype: String,
-    /** Default outcome. */
+    /** Default/fallback outcome (also used as the base "shape" when skillCheck is null). */
     val consequence: ChoiceConsequence,
     /** Overrides [consequence] when the card's real-world requirement (item/reputation/flag) matters. */
-    val conditionalOutcome: ((WorldState) -> ChoiceConsequence)? = null
+    val conditionalOutcome: ((WorldState) -> ChoiceConsequence)? = null,
+    /** When present, resolution is an attribute-modified dice roll instead of a fixed/conditional outcome. */
+    val skillCheck: SkillCheck? = null
 ) {
-    fun resolve(world: WorldState): ChoiceConsequence = conditionalOutcome?.invoke(world) ?: consequence
+    fun resolve(world: WorldState): ChoiceConsequence {
+        val check = skillCheck
+        if (check != null) {
+            val roll = kotlin.random.Random.nextDouble(100.0)
+            return if (roll < check.successChancePercent(world)) check.successConsequence else check.failureConsequence
+        }
+        return conditionalOutcome?.invoke(world) ?: consequence
+    }
 }
 
 data class EventNode(
@@ -58,6 +88,13 @@ data class EventNode(
     val maxTurn: Int = 25,
     /** When true and eligible, this node is picked over the general phase pool (climax / crisis beats). */
     val forcedPriority: Boolean = false,
+    /**
+     * Whether an AI-generated spice vignette is allowed to replace this node on its turn.
+     * Defaults to false (load-bearing) so causal/gating cards are never silently swapped out -
+     * only self-contained one-off vignette cards with no downstream flag/item dependents should
+     * opt in explicitly.
+     */
+    val flavorEligible: Boolean = false,
     val condition: (WorldState) -> Boolean = { true },
     val titleEn: String,
     val titleSk: String,
@@ -96,6 +133,19 @@ object EventDeck {
         // Pool exhausted for this phase - allow repeats (except one-off climactic beats).
         val repeatable = pool.filter { !it.forcedPriority && it.canTrigger(world) }
         return repeatable.randomOrNull()
+    }
+
+    /**
+     * Picks a couple of real authored "fixed" (non-flavorEligible) cards from this origin/phase to
+     * use as few-shot grounding examples when asking the AI to write a one-off flavor vignette, so
+     * its tone, scale, and structure matches the hand-authored deck instead of drifting generic.
+     */
+    fun fewShotSamples(world: WorldState, count: Int = 2): List<EventNode> {
+        val phase = phaseForTurn(world.turnCount)
+        val originPool = nodesForOrigin(world.activeOrigin)
+        val fixedInPhase = originPool.filter { it.phase == phase && !it.flavorEligible }
+        val pool = fixedInPhase.ifEmpty { originPool.filter { !it.flavorEligible } }
+        return pool.shuffled().take(count)
     }
 
     fun findNode(id: String): EventNode? = ALL_NODES.find { it.id == id }
@@ -181,7 +231,6 @@ object EventDeck {
             phase = EventPhase.PHASE_1,
             originClass = OriginClass.PEASANT,
             minTurn = 1, maxTurn = 1,
-            forcedPriority = true,
             titleEn = "The Winter Tithe and the Rigged Measure",
             titleSk = "Zimný Desiatok a Panská Miera",
             textEn = "The manor official measures your grain with his own, tampered bushel. If you hand over what he demands, your family starves before spring.",
@@ -383,13 +432,32 @@ object EventDeck {
                     id = 3, textEn = "Ambush the gamekeeper from behind and kill him", textSk = "Prepadnúť hájnika zo zadu a zabiť ho",
                     tagEn = "Murder", tagSk = "Vražda", cardArchetype = "Underworld_Action",
                     consequence = ChoiceConsequence(
-                        regionalTensionChange = 40, notorietyChange = 30, factionChanges = mapOf(Faction.PEASANTS to 15),
-                        addFlags = setOf("BLOOD_ON_HANDS"),
-                        addItems = setOf("Huntsman_Dagger"),
-                        resolutionTextEn = "Wulf falls without a sound into the frozen bracken, his dagger yours now.",
-                        resolutionTextSk = "Wulf padne bez zvuku do zamrznutého kapradia, jeho dýka je teraz tvoja.",
-                        bridgeTextEn = "You drag the body into the undergrowth, hands trembling with what you've done.",
-                        bridgeTextSk = "Telo vlečieš do podrastu, ruky sa ti trasú z toho, čo si spravil."
+                        healthChange = -25, regionalTensionChange = 20, notorietyChange = 15,
+                        resolutionTextEn = "Wulf twists free at the last instant, your blade only grazing him before his fist drives the breath from your lungs.",
+                        resolutionTextSk = "Wulf sa v poslednej chvíli vytrhne, tvoja čepeľ ho len obrie, skôr než ti jeho päsť vyrazí dych z pľúc.",
+                        bridgeTextEn = "You stumble away wounded, the gamekeeper's furious shouts echoing behind you.",
+                        bridgeTextSk = "Odpotácaš sa preč zranený, hájnikove zúrivé výkriky sa ozývajú za tebou."
+                    ),
+                    skillCheck = SkillCheck(
+                        attribute = SkillAttribute.MIGHT,
+                        difficulty = 50,
+                        successConsequence = ChoiceConsequence(
+                            regionalTensionChange = 40, notorietyChange = 30, factionChanges = mapOf(Faction.PEASANTS to 15),
+                            attributeChanges = mapOf("MIGHT" to 3),
+                            addFlags = setOf("BLOOD_ON_HANDS"),
+                            addItems = setOf("Huntsman_Dagger"),
+                            resolutionTextEn = "Wulf falls without a sound into the frozen bracken, his dagger yours now.",
+                            resolutionTextSk = "Wulf padne bez zvuku do zamrznutého kapradia, jeho dýka je teraz tvoja.",
+                            bridgeTextEn = "You drag the body into the undergrowth, hands trembling with what you've done.",
+                            bridgeTextSk = "Telo vlečieš do podrastu, ruky sa ti trasú z toho, čo si spravil."
+                        ),
+                        failureConsequence = ChoiceConsequence(
+                            healthChange = -25, regionalTensionChange = 20, notorietyChange = 15,
+                            resolutionTextEn = "Wulf twists free at the last instant, your blade only grazing him before his fist drives the breath from your lungs.",
+                            resolutionTextSk = "Wulf sa v poslednej chvíli vytrhne, tvoja čepeľ ho len obrie, skôr než ti jeho päsť vyrazí dych z pľúc.",
+                            bridgeTextEn = "You stumble away wounded, the gamekeeper's furious shouts echoing behind you.",
+                            bridgeTextSk = "Odpotácaš sa preč zranený, hájnikove zúrivé výkriky sa ozývajú za tebou."
+                        )
                     )
                 )
             )
@@ -496,12 +564,31 @@ object EventDeck {
                     id = 3, textEn = "Slit his throat in his sleep and take all", textSk = "Podrezať mu hrdlo v spánku a zobrať všetko",
                     tagEn = "Murder", tagSk = "Vražda", cardArchetype = "Underworld_Action",
                     consequence = ChoiceConsequence(
-                        goldChange = 50, notorietyChange = 20, regionalTensionChange = 10,
-                        addFlags = setOf("COLD_MURDERER"),
-                        resolutionTextEn = "Cain never wakes. His purse, papers, and blade are yours by dawn.",
-                        resolutionTextSk = "Cain sa už nezobudí. Jeho mešec, listiny aj čepeľ sú do rána tvoje.",
-                        bridgeTextEn = "You bury him beneath the hay before the cock crows.",
-                        bridgeTextSk = "Pochováš ho pod senom skôr, než zaspieva kohút."
+                        healthChange = -15, regionalTensionChange = 15, notorietyChange = 10,
+                        resolutionTextEn = "Cain's eyes snap open at the last instant, and his good arm catches your wrist before the blade lands true.",
+                        resolutionTextSk = "Cainove oči sa v poslednej chvíli otvoria a jeho zdravá ruka zachytí tvoje zápästie skôr, než čepeľ dopadne.",
+                        bridgeTextEn = "You flee the barn empty-handed as Cain shouts curses into the dark.",
+                        bridgeTextSk = "Utekáš zo stodoly s prázdnymi rukami, kým Cain kričí kliatby do tmy."
+                    ),
+                    skillCheck = SkillCheck(
+                        attribute = SkillAttribute.CUNNING,
+                        difficulty = 55,
+                        successConsequence = ChoiceConsequence(
+                            goldChange = 50, notorietyChange = 20, regionalTensionChange = 10,
+                            attributeChanges = mapOf("CUNNING" to 3),
+                            addFlags = setOf("COLD_MURDERER"),
+                            resolutionTextEn = "Cain never wakes. His purse, papers, and blade are yours by dawn.",
+                            resolutionTextSk = "Cain sa už nezobudí. Jeho mešec, listiny aj čepeľ sú do rána tvoje.",
+                            bridgeTextEn = "You bury him beneath the hay before the cock crows.",
+                            bridgeTextSk = "Pochováš ho pod senom skôr, než zaspieva kohút."
+                        ),
+                        failureConsequence = ChoiceConsequence(
+                            healthChange = -15, regionalTensionChange = 15, notorietyChange = 10,
+                            resolutionTextEn = "Cain's eyes snap open at the last instant, and his good arm catches your wrist before the blade lands true.",
+                            resolutionTextSk = "Cainove oči sa v poslednej chvíli otvoria a jeho zdravá ruka zachytí tvoje zápästie skôr, než čepeľ dopadne.",
+                            bridgeTextEn = "You flee the barn empty-handed as Cain shouts curses into the dark.",
+                            bridgeTextSk = "Utekáš zo stodoly s prázdnymi rukami, kým Cain kričí kliatby do tmy."
+                        )
                     )
                 )
             )
@@ -875,7 +962,7 @@ object EventDeck {
             id = "p3_grand_trial",
             phase = EventPhase.PHASE_3,
             originClass = OriginClass.PEASANT,
-            minTurn = 17, maxTurn = 24,
+            minTurn = 17, maxTurn = 21,
             forcedPriority = true,
             condition = { it.notoriety > 80 },
             titleEn = "The Grand Trial at the Castle",
@@ -1126,7 +1213,955 @@ object EventDeck {
                     }
                 )
             )
+        ),
+
+        // --- Additional Turn-1 opener variants (adapted from the extended crisis pool below,
+        // reframed as opening scenarios so the very first card is no longer always identical) ---
+
+        EventNode(
+            id = "p1_opener_coin_clipping",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.PEASANT,
+            minTurn = 1, maxTurn = 1,
+            titleEn = "The Debased Coin",
+            titleSk = "Znehodnotená Panská Minca",
+            textEn = "The mill keeper refuses your copper coins. The Lord has begun melting silver into debased, lead-heavy coinage, and your family's meager savings lose worth by the day.",
+            textSk = "Mlynár odmieta prijať tvoje medenáky. Lord začal taviť striebro a raziť znehodnotené mince s vysokým obsahom olova. Tvoje skromné úspory strácajú hodnotu zo dňa na deň.",
+            location = "Village",
+            npcName = "Mill Keeper Osric",
+            npcTitle = "Village Mill Keeper",
+            npcArchetype = "PEASANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Trade debased coin for real grain with a moneylender", textSk = "Vymeniť znehodnotené mince u úžerníka za reálne obilie",
+                    tagEn = "Barter", tagSk = "Výmena", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -5, healthChange = 15,
+                        addFlags = setOf("BARTER_SURVIVOR"),
+                        resolutionTextEn = "The moneylender weighs your coin with a sneer but hands over honest sacks of grain.",
+                        resolutionTextSk = "Úžerník s úškrnom odváži tvoje mince, no odovzdá čestné vrecia obilia.",
+                        bridgeTextEn = "Your larder is fuller, though your purse is thinner for it.",
+                        bridgeTextSk = "Tvoja špajza je plnšia, hoci mešec o to tenší."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Lead villagers to the manor demanding honest silver", textSk = "Viesť skupinu sedliakov pred panský dvor a žiadať poctivé striebro",
+                    tagEn = "Protest", tagSk = "Protest", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        regionalTensionChange = 15, factionChanges = mapOf(Faction.PEASANTS to 20, Faction.NOBILITY to -10),
+                        addFlags = setOf("CURRENCY_REBEL"),
+                        resolutionTextEn = "A crowd gathers at your call, fists raised against the manor gate over the debased coin.",
+                        resolutionTextSk = "Na tvoje zvolanie sa zíde dav, päste zdvihnuté proti panskej bráne kvôli znehodnotenej minci.",
+                        bridgeTextEn = "The steward promises to look into it - a promise you do not quite believe.",
+                        bridgeTextSk = "Správca sľubuje, že sa na to pozrie - sľub, ktorému celkom neveríš."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Secretly alloy your own coins with lead in the stable", textSk = "Začať tajne legovať mince olovom vo vlastnej maštali",
+                    tagEn = "Counterfeiting", tagSk = "Falšovanie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 30, notorietyChange = 15,
+                        addItems = setOf("Lead_Ingot"),
+                        addFlags = setOf("LOCAL_COUNTERFEITER"),
+                        resolutionTextEn = "Molten lead hisses into crude coin molds by candlelight in your own stable.",
+                        resolutionTextSk = "Roztavené olovo zasyčí do hrubých foriem na mince pri sviečke vo vlastnej maštali.",
+                        bridgeTextEn = "Your new coin passes well enough in the dark - for now.",
+                        bridgeTextSk = "Tvoja nová minca v tme celkom obstojí - zatiaľ."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_opener_poverty_call",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.PEASANT,
+            minTurn = 1, maxTurn = 1,
+            titleEn = "The Call of the Poor Crusade",
+            titleSk = "Volanie Krížovej Výpravy Chudoby",
+            textEn = "A wandering renegade priest has gathered barefoot peasants at the crossroads, marching south, certain their faith alone will stop swords. He calls on you to abandon your field and join.",
+            textSk = "Potulný renegátsky kňaz zhromaždil bosých sedliakov na križovatke a kráča na juh, presvedčený, že ich viera zastaví meče. Volá ťa, aby si opustil svoje pole a pridal sa.",
+            location = "Village",
+            npcName = "Preacher Odilo",
+            npcTitle = "Renegade Preacher",
+            npcArchetype = "ELDER",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Abandon your field, take up the cross, and march", textSk = "Opustiť pole, vziať rodový kríž a pridať sa k pochodu",
+                    tagEn = "Crusade", tagSk = "Výprava", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -10, factionChanges = mapOf(Faction.CHURCH to 25, Faction.PEASANTS to 20),
+                        addFlags = setOf("CRUSADER_PEASANT"),
+                        resolutionTextEn = "You fall into step with the barefoot column, Odilo's psalm rising over the frosted road.",
+                        resolutionTextSk = "Zaradíš sa do bosej kolóny, kým Odilov žalm stúpa nad zamrznutou cestou.",
+                        bridgeTextEn = "Your field stands untended behind you, your fate now tied to this march.",
+                        bridgeTextSk = "Tvoje pole ostáva neobrobené za tebou, tvoj osud je teraz spätý s týmto pochodom."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Report the preacher to the bailiffs as a dangerous rabble-rouser", textSk = "Udať kňaza panským drábom ako nebezpečného rozvracača",
+                    tagEn = "Betrayal", tagSk = "Zrada", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 25, factionChanges = mapOf(Faction.NOBILITY to 20, Faction.PEASANTS to -25),
+                        addFlags = setOf("JUDAS_PRIEST"),
+                        resolutionTextEn = "Bailiffs seize Odilo mid-sermon as you collect your reward with lowered eyes.",
+                        resolutionTextSk = "Drábi zajmú Odila uprostred kázne, kým si so sklopenými očami vyzdvihneš odmenu.",
+                        bridgeTextEn = "The scattered marchers curse your name as they're driven back to their fields.",
+                        bridgeTextSk = "Rozohnaní pútnici preklínajú tvoje meno, kým ich naháňajú späť na polia."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Sell old blades and fake relics to the marching pilgrims", textSk = "Predávať staré zbrane a neúčinné relikvie pochodujúcim",
+                    tagEn = "Profiteering", tagSk = "Zbohatlíctvo", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 35, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 10),
+                        addFlags = setOf("WAR_MERCHANT"),
+                        resolutionTextEn = "Rusted blades and painted pebbles change hands for coin the marchers can ill afford.",
+                        resolutionTextSk = "Hrdzavé čepele a pomaľované kamienky menia majiteľa za mince, ktoré si pútnici sotva môžu dovoliť.",
+                        bridgeTextEn = "The column marches on, poorer and no better armed than before.",
+                        bridgeTextSk = "Kolóna pochoduje ďalej, chudobnejšia a o nič lepšie vyzbrojená než predtým."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_opener_flagellants",
+            phase = EventPhase.PHASE_1,
+            originClass = OriginClass.PEASANT,
+            minTurn = 1, maxTurn = 1,
+            titleEn = "The Wandering Flagellant Procession",
+            titleSk = "Potulný Sprievod Bičovníkov",
+            textEn = "A procession of hooded men arrives at your settlement on the very day your story begins. They scourge themselves with nail-studded straps, singing psalms, blaming the local bailiff for bringing God's wrath upon the village.",
+            textSk = "Práve v deň, keď sa začína tvoj príbeh, dorazí do osady zástup mužov v kapucniach. Bičujú sa remeňmi s klincami, spievajú žalmy a obviňujú miestneho drába, že priniesol na dedinu boží hnev.",
+            location = "Village",
+            npcName = "Brother Anselm",
+            npcTitle = "Flagellant Leader",
+            npcArchetype = "ELDER",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Scourge yourself alongside them in penance", textSk = "Bičovať sa s nimi a prijať pokánie",
+                    tagEn = "Penance", tagSk = "Pokánie", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -15, factionChanges = mapOf(Faction.CHURCH to 20),
+                        addFlags = setOf("FLAGELLANT_CONVERT"),
+                        resolutionTextEn = "The studded strap bites into your own back as you join the swaying line of penitents.",
+                        resolutionTextSk = "Okovaný remeň sa ti zareže do vlastného chrbta, kým sa pridáš k kolíšucej línii kajúcnikov.",
+                        bridgeTextEn = "Anselm marks you as one of his own before the procession moves on.",
+                        bridgeTextSk = "Anselm ťa označí za jedného zo svojich, skôr než sprievod pokračuje ďalej."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Drive them out of the village with pitchforks as heretics", textSk = "Vyhnať ich vidlami za dedinu ako kacírov",
+                    tagEn = "Expulsion", tagSk = "Vyhnanie", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.NOBILITY to 15, Faction.PEASANTS to -15),
+                        addFlags = setOf("RATIONAL_DEFENDER"),
+                        resolutionTextEn = "Pitchfork tines herd the bleeding procession back onto the frozen road.",
+                        resolutionTextSk = "Hroty vidiel zaháňajú krvácajúci sprievod späť na zamrznutú cestu.",
+                        bridgeTextEn = "Some villagers mutter that you've angered God himself by turning them away.",
+                        bridgeTextSk = "Niektorí dedinčania šomrú, že si nahneval samotného Boha, keď si ich odohnal."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Rob their offering chest amid the chaos of the procession", textSk = "Okrať ich obetnú truhlicu v chaose procesie",
+                    tagEn = "Theft", tagSk = "Krádež", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 30, notorietyChange = 10, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 15),
+                        addItems = setOf("Flagellant_Relic"),
+                        addFlags = setOf("SACRILEGIOUS_SCOURGE"),
+                        resolutionTextEn = "Amid the wailing and the crack of straps, the offering chest's latch gives way beneath your fingers.",
+                        resolutionTextSk = "Uprostred nariekania a praskania remeňov ti pod prstami povolí zámka obetnej truhlice.",
+                        bridgeTextEn = "You slip away with the coin before the procession even notices what's missing.",
+                        bridgeTextSk = "Zmizneš s mincami skôr, než si sprievod vôbec všimne, čo chýba."
+                    )
+                )
+            )
+        ),
+
+        // --- Extended crisis pool (Turns 6-24): historically-inspired escalation events ---
+
+        EventNode(
+            id = "p1_flagellant_procession",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.PEASANT,
+            condition = { it.regionalTension > 40 || it.worldFlags.contains("STARVING") },
+            titleEn = "The Wandering Flagellant Procession",
+            titleSk = "Potulný Sprievod Bičovníkov",
+            textEn = "A procession of bloodied, hooded men has arrived in the settlement. They scourge themselves with nail-studded straps, singing psalms, blaming the local bailiff for bringing God's wrath and plague upon the village.",
+            textSk = "Do osady dorazil zástup krvavých mužov v kapucniach. Bičujú sa remeňmi s klincami, spievajú žalmy a obviňujú miestneho drába, že priniesol na dedinu boží hnev a morovú nákazu.",
+            location = "Village",
+            npcName = "Brother Anselm",
+            npcTitle = "Flagellant Leader",
+            npcArchetype = "ELDER",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Scourge yourself alongside them in penance", textSk = "Bičovať sa s nimi a prijať pokánie",
+                    tagEn = "Penance", tagSk = "Pokánie", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -20, regionalTensionChange = -10, factionChanges = mapOf(Faction.CHURCH to 20),
+                        addFlags = setOf("FLAGELLANT_CONVERT"),
+                        resolutionTextEn = "The studded strap bites into your own back as you join the swaying line of penitents.",
+                        resolutionTextSk = "Okovaný remeň sa ti zareže do vlastného chrbta, kým sa pridáš k kolíšucej línii kajúcnikov.",
+                        bridgeTextEn = "The village's fear settles somewhat as the penance is witnessed and shared.",
+                        bridgeTextSk = "Strach v dedine trochu poľaví, keď je pokánie spoločne odpykané."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Drive them out of the village with pitchforks as heretics", textSk = "Vyhnať ich vidlami za dedinu ako kacírov",
+                    tagEn = "Expulsion", tagSk = "Vyhnanie", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.NOBILITY to 15, Faction.PEASANTS to -20),
+                        addFlags = setOf("RATIONAL_DEFENDER"),
+                        resolutionTextEn = "Pitchfork tines herd the bleeding procession back onto the frozen road.",
+                        resolutionTextSk = "Hroty vidiel zaháňajú krvácajúci sprievod späť na zamrznutú cestu.",
+                        bridgeTextEn = "Some villagers mutter that you've angered God himself by turning them away.",
+                        bridgeTextSk = "Niektorí dedinčania šomrú, že si nahneval samotného Boha, keď si ich odohnal."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Rob their offering chest amid the procession's chaos", textSk = "Okrať ich obetnú truhlicu v chaose procesie",
+                    tagEn = "Theft", tagSk = "Krádež", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 30, notorietyChange = 10, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 15),
+                        addItems = setOf("Flagellant_Relic"),
+                        addFlags = setOf("SACRILEGIOUS_SCOURGE"),
+                        resolutionTextEn = "Amid the wailing and the crack of straps, the offering chest's latch gives way beneath your fingers.",
+                        resolutionTextSk = "Uprostred nariekania a praskania remeňov ti pod prstami povolí zámka obetnej truhlice.",
+                        bridgeTextEn = "You slip away with the coin before the procession even notices what's missing.",
+                        bridgeTextSk = "Zmizneš s mincami skôr, než si sprievod vôbec všimne, čo chýba."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_debased_coin",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.PEASANT,
+            flavorEligible = true,
+            condition = { it.gold >= 10 },
+            titleEn = "The Debased Manor Coin",
+            titleSk = "Znehodnotená Panská Minca",
+            textEn = "The manor miller refuses your copper coins. The Lord has begun melting silver into debased, lead-heavy coinage, and your savings lose worth by the day.",
+            textSk = "Panský mlynár odmieta prijať tvoje medenáky. Lord začal taviť striebro a raziť znehodnotené mince s vysokým obsahom olova. Tvoje úspory strácajú hodnotu zo dňa na deň.",
+            location = "Village",
+            npcName = "Miller Godfrey",
+            npcTitle = "Manor Miller",
+            npcArchetype = "MERCHANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Trade debased coin for real grain with a moneylender", textSk = "Vymeniť znehodnotené mince u úžerníka za reálne obilie",
+                    tagEn = "Barter", tagSk = "Výmena", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -15, healthChange = 20,
+                        addFlags = setOf("BARTER_SURVIVOR"),
+                        resolutionTextEn = "The moneylender weighs your coin with a sneer but hands over honest sacks of grain.",
+                        resolutionTextSk = "Úžerník s úškrnom odváži tvoje mince, no odovzdá čestné vrecia obilia.",
+                        bridgeTextEn = "Your larder is fuller, though your purse is thinner for it.",
+                        bridgeTextSk = "Tvoja špajza je plnšia, hoci mešec o to tenší."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Lead peasants to the manor demanding honest silver", textSk = "Viesť skupinu sedliakov pred panský dvor a žiadať poctivé striebro",
+                    tagEn = "Protest", tagSk = "Protest", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        regionalTensionChange = 10, factionChanges = mapOf(Faction.NOBILITY to -5),
+                        resolutionTextEn = "Your call falls flat - only a handful of neighbors join you, and the manor gate does not even open.",
+                        resolutionTextSk = "Tvoje zvolanie vyznie naprázdno - pridá sa len hŕstka susedov a panská brána sa ani neotvorí.",
+                        bridgeTextEn = "You slink back to your field, the debased coin still worthless in your pocket.",
+                        bridgeTextSk = "Vraciaš sa späť na pole, znehodnotená minca vo vrecku stále bezcenná."
+                    ),
+                    skillCheck = SkillCheck(
+                        attribute = SkillAttribute.CHARISMA,
+                        difficulty = 50,
+                        successConsequence = ChoiceConsequence(
+                            regionalTensionChange = 20, factionChanges = mapOf(Faction.PEASANTS to 25, Faction.NOBILITY to -15),
+                            attributeChanges = mapOf("CHARISMA" to 3),
+                            addFlags = setOf("CURRENCY_REBEL"),
+                            resolutionTextEn = "A crowd gathers at your call, fists raised against the manor gate over the debased coin.",
+                            resolutionTextSk = "Na tvoje zvolanie sa zíde dav, päste zdvihnuté proti panskej bráne kvôli znehodnotenej minci.",
+                            bridgeTextEn = "The steward promises to look into it - a promise you do not quite believe.",
+                            bridgeTextSk = "Správca sľubuje, že sa na to pozrie - sľub, ktorému celkom neveríš."
+                        ),
+                        failureConsequence = ChoiceConsequence(
+                            regionalTensionChange = 10, factionChanges = mapOf(Faction.NOBILITY to -5),
+                            resolutionTextEn = "Your call falls flat - only a handful of neighbors join you, and the manor gate does not even open.",
+                            resolutionTextSk = "Tvoje zvolanie vyznie naprázdno - pridá sa len hŕstka susedov a panská brána sa ani neotvorí.",
+                            bridgeTextEn = "You slink back to your field, the debased coin still worthless in your pocket.",
+                            bridgeTextSk = "Vraciaš sa späť na pole, znehodnotená minca vo vrecku stále bezcenná."
+                        )
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Secretly alloy your own coins with lead in the stable", textSk = "Začať tajne legovať mince olovom vo vlastnej maštali",
+                    tagEn = "Counterfeiting", tagSk = "Falšovanie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 40, notorietyChange = 20,
+                        addItems = setOf("Lead_Ingot"),
+                        addFlags = setOf("LOCAL_COUNTERFEITER"),
+                        resolutionTextEn = "Molten lead hisses into crude coin molds by candlelight in your own stable.",
+                        resolutionTextSk = "Roztavené olovo zasyčí do hrubých foriem na mince pri sviečke vo vlastnej maštali.",
+                        bridgeTextEn = "Your new coin passes well enough in the dark - for now.",
+                        bridgeTextSk = "Tvoja nová minca v tme celkom obstojí - zatiaľ."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_poisoned_well",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.PEASANT,
+            flavorEligible = true,
+            minTurn = 8, maxTurn = 14,
+            titleEn = "The Poisoned Village Well",
+            titleSk = "Otrávená Dedinská Studňa",
+            textEn = "The water in the main well has soured and livestock are dying of it. A mob has seized a wandering herbalist stranger and bound him to a wheel, certain he poisoned the water.",
+            textSk = "Voda v hlavnej studni skysla a dobytku pukajú pľúca. Dav dedinčanov chytil potulného bylinkára/cudzinca a priviazal ho k kolesu s tým, že otrávil vodu.",
+            location = "Village",
+            npcName = "Wandering Herbalist Yannick",
+            npcTitle = "Accused Stranger",
+            npcArchetype = "ALCHEMIST",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Save the stranger and let him flee into the forest", textSk = "Zachrániť cudzinca a umožniť mu útek do lesa",
+                    tagEn = "Rescue", tagSk = "Záchrana", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -10, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 15), factionChanges = mapOf(Faction.PEASANTS to 20),
+                        addItems = setOf("Herbal_Antidote"),
+                        addFlags = setOf("SAVED_FOREIGNER"),
+                        resolutionTextEn = "You cut Yannick's bonds in the confusion and shove him toward the treeline before the mob turns back.",
+                        resolutionTextSk = "V zmätku prerežeš Yannickove putá a strčíš ho smerom k lesu skôr, než sa dav otočí.",
+                        bridgeTextEn = "He presses a vial into your hand before vanishing into the dark.",
+                        bridgeTextSk = "Pred zmiznutím v tme ti vtlačí do ruky liekovku."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Light the pyre beneath the stranger to calm the mob", textSk = "Zapáliť hranicu pod cudzincom a upokojiť dav",
+                    tagEn = "Mob Justice", tagSk = "Davová Spravodlivosť", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.CHURCH to 15, Faction.NOBILITY to 10, Faction.PEASANTS to -20),
+                        addFlags = setOf("MOB_JUSTICE_LEADER"),
+                        resolutionTextEn = "The torch catches, and Yannick's screams are swallowed by the crowd's satisfied roar.",
+                        resolutionTextSk = "Fakľa chytí a Yannickov krik pohltí spokojný rev davu.",
+                        bridgeTextEn = "The well's foulness remains unexplained, but the village feels avenged.",
+                        bridgeTextSk = "Zápach studne ostáva nevysvetlený, no dedina sa cíti pomstená."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Sell your own clean spring water for gold", textSk = "Predávať vlastnú čistú vodu z horského potoka za zlatky",
+                    tagEn = "Profiteering", tagSk = "Zbohatlíctvo", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 35, factionChanges = mapOf(Faction.PEASANTS to -15),
+                        addFlags = setOf("WATER_MONOPOLIST"),
+                        resolutionTextEn = "Desperate neighbors line up at your door, coin in hand, for water you once shared freely.",
+                        resolutionTextSk = "Zúfalí susedia sa radia pred tvojimi dverami s mincou v ruke za vodu, ktorú si kedysi dával zadarmo.",
+                        bridgeTextEn = "The stranger burns or flees regardless - your ledger only grows heavier with coin.",
+                        bridgeTextSk = "Cudzinec zhorí alebo utečie tak či onak - tvoja kniha len ťažnie mincami."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_mercenary_company",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.PEASANT,
+            condition = { it.regionalTension > 50 || it.worldFlags.contains("HARBORS_DESERTERS") },
+            titleEn = "The Broken Mercenary Company in the Tavern",
+            titleSk = "Rozbitá Žoldnierska Rota v Krčme",
+            textEn = "Ten armed mercenaries from the southern war have occupied the local tavern. They killed the tavernkeeper, drink without paying, and demand 50 gold from the village as 'protection from burning'.",
+            textSk = "Desať ozbrojených žoldnierov z južnej vojny obsadilo miestnu krčmu. Zabili krčmára, pijú bez platenia a žiadajú od dediny 50 zlatých ako 'ochranu pred spálením'.",
+            location = "Tavern",
+            npcName = "Mercenary Captain Roste",
+            npcTitle = "Broken Company Captain",
+            npcArchetype = "BANDIT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Burn the tavern at night while they lie drunk asleep", textSk = "Podpáliť krčmu v noci, kým opití spia",
+                    tagEn = "Arson", tagSk = "Podpaľačstvo", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -20, regionalTensionChange = 25, notorietyChange = 15,
+                        resolutionTextEn = "A dry branch snaps underfoot, and Roste's men are on you before the first flame catches.",
+                        resolutionTextSk = "Suchý konár praskne pod nohou a Rosteho muži sú na tebe skôr, než chytí prvý plameň.",
+                        bridgeTextEn = "You barely escape the tavern with your life, the arson plan in ruins.",
+                        bridgeTextSk = "Sotva unikneš z krčmy so životom, plán podpaľačstva v troskách."
+                    ),
+                    skillCheck = SkillCheck(
+                        attribute = SkillAttribute.CUNNING,
+                        difficulty = 50,
+                        successConsequence = ChoiceConsequence(
+                            regionalTensionChange = 30, notorietyChange = 20, factionChanges = mapOf(Faction.PEASANTS to 30),
+                            attributeChanges = mapOf("CUNNING" to 3),
+                            addItems = setOf("Soldier_Broadsword"),
+                            addFlags = setOf("MERCENARY_SLAYER"),
+                            resolutionTextEn = "Flames swallow the tavern's timber roof as drunken shouts turn to screams within.",
+                            resolutionTextSk = "Plamene pohltia drevenú strechu krčmy, kým sa opité výkriky vnútri menia na kriky bolesti.",
+                            bridgeTextEn = "The village is free of Roste's men, though the ash still smolders by morning.",
+                            bridgeTextSk = "Dedina je zbavená Rosteho mužov, hoci popol ešte do rána doutieva."
+                        ),
+                        failureConsequence = ChoiceConsequence(
+                            healthChange = -20, regionalTensionChange = 25, notorietyChange = 15,
+                            resolutionTextEn = "A dry branch snaps underfoot, and Roste's men are on you before the first flame catches.",
+                            resolutionTextSk = "Suchý konár praskne pod nohou a Rosteho muži sú na tebe skôr, než chytí prvý plameň.",
+                            bridgeTextEn = "You barely escape the tavern with your life, the arson plan in ruins.",
+                            bridgeTextSk = "Sotva unikneš z krčmy so životom, plán podpaľačstva v troskách."
+                        )
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Gather the village's gold and pay their demand", textSk = "Vyzbierať dedinské zlato a vyplatiť ich požiadavku",
+                    tagEn = "Extortion", tagSk = "Vydieranie", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -25, factionChanges = mapOf(Faction.NOBILITY to 10, Faction.PEASANTS to -20),
+                        addFlags = setOf("EXTORTED_VILLAGE"),
+                        resolutionTextEn = "Roste counts the coin twice, grins, and promises to move on by week's end.",
+                        resolutionTextSk = "Roste dvakrát prepočíta mince, uškrnie sa a sľúbi, že do konca týždňa odtiahne.",
+                        bridgeTextEn = "The village is poorer, but the tavern still stands - for now.",
+                        bridgeTextSk = "Dedina je chudobnejšia, no krčma stále stojí - zatiaľ."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Offer to guide them to the wealthy manor mill instead", textSk = "Ponúknuť im, že ich prevedieš k bohatému panskému mlynu",
+                    tagEn = "Redirection", tagSk = "Presmerovanie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 40, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 25), factionChanges = mapOf(Faction.NOBILITY to -30),
+                        addFlags = setOf("BANDIT_GUIDE"),
+                        resolutionTextEn = "Roste's eyes light up at the mention of the manor's mill, and his company saddles up within the hour.",
+                        resolutionTextSk = "Rostemu zažiaria oči pri zmienke o panskom mlyne a jeho rota sa do hodiny osedlá.",
+                        bridgeTextEn = "Your village is spared, and a modest cut of silver reaches your palm for your trouble.",
+                        bridgeTextSk = "Tvoja dedina je ušetrená a za tvoju námahu sa ti do dlane dostane skromný podiel striebra."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_royal_forest",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.PEASANT,
+            condition = { it.worldFlags.contains("SECRET_POACHER") || it.worldFlags.contains("SUBMISSIVE") },
+            titleEn = "The King's Reserved Forest",
+            titleSk = "Kráľovský Vyhradený Les",
+            textEn = "A royal herald has nailed a proclamation to the church door. The manor forest is now a royal reserve. Peasant entry is forbidden under threat of losing a right hand. Firewood has run out.",
+            textSk = "Kráľovský herold zatĺkol na dvere kostola vyhlášku. Panský les bol vyhlásený za kráľovskú oboru. Vstup poddaných pod hrozbou odťatia pravej ruky. Drevo na kúrenie je preč.",
+            location = "Forest",
+            npcName = "Royal Herald",
+            npcTitle = "King's Herald",
+            npcArchetype = "KNIGHT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Gather firewood secretly under cover of night", textSk = "Chodiť na drevo tajne pod krytím noci",
+                    tagEn = "Poaching", tagSk = "Pytliactvo", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = 10, notorietyChange = 10,
+                        addFlags = setOf("WOOD_WOODCUTTER"),
+                        resolutionTextEn = "You slip between the reserve's marker stones with an armful of stolen branches before dawn.",
+                        resolutionTextSk = "Prekĺzneš medzi hraničnými kameňmi obory s náručím ukradnutých konárov ešte pred svitaním.",
+                        bridgeTextEn = "Your hearth burns warm tonight, a small defiance against the crown's decree.",
+                        bridgeTextSk = "Tvoj krb dnes večer horí teplo, malý vzdor proti kráľovskému výnosu."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Petition the Lord for an exemption for the poor", textSk = "Podpísať petíciu u pána a prosiť o výnimku pre chudobu",
+                    tagEn = "Petition", tagSk = "Petícia", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.NOBILITY to 10, Faction.PEASANTS to -10),
+                        addFlags = setOf("BEGGING_SUBJECT"),
+                        resolutionTextEn = "The steward makes no promises, jotting your name down with obvious disinterest.",
+                        resolutionTextSk = "Správca nesľubuje nič a tvoje meno si zapíše s očividným nezáujmom.",
+                        bridgeTextEn = "You leave the manor no better off, your plea seemingly forgotten already.",
+                        bridgeTextSk = "Z panstva odchádzaš na tom rovnako zle, tvoja prosba akoby už bola zabudnutá."
+                    ),
+                    skillCheck = SkillCheck(
+                        attribute = SkillAttribute.CHARISMA,
+                        difficulty = 45,
+                        successConsequence = ChoiceConsequence(
+                            healthChange = 5, factionChanges = mapOf(Faction.NOBILITY to 15),
+                            attributeChanges = mapOf("CHARISMA" to 3),
+                            addFlags = setOf("NOBLE_MERCY"),
+                            resolutionTextEn = "Your words strike a rare chord, and the steward grants a modest allowance of deadwood.",
+                            resolutionTextSk = "Tvoje slová zasiahnu vzácnu strunu a správca povolí skromný prídel suchého dreva.",
+                            bridgeTextEn = "Your hearth will not go cold this winter, thanks to your plea alone.",
+                            bridgeTextSk = "Tvoj krb túto zimu nevychladne, vďaka samotnej tvojej prosbe."
+                        ),
+                        failureConsequence = ChoiceConsequence(
+                            factionChanges = mapOf(Faction.NOBILITY to 10, Faction.PEASANTS to -10),
+                            addFlags = setOf("BEGGING_SUBJECT"),
+                            resolutionTextEn = "The steward makes no promises, jotting your name down with obvious disinterest.",
+                            resolutionTextSk = "Správca nesľubuje nič a tvoje meno si zapíše s očividným nezáujmom.",
+                            bridgeTextEn = "You leave the manor no better off, your plea seemingly forgotten already.",
+                            bridgeTextSk = "Z panstva odchádzaš na tom rovnako zle, tvoja prosba akoby už bola zabudnutá."
+                        )
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Ambush and beat the royal gamekeeper as a warning", textSk = "Zajať a zbiť kráľovského hájnika na výstrahu",
+                    tagEn = "Defiance", tagSk = "Vzdor", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -20, regionalTensionChange = 15,
+                        resolutionTextEn = "The gamekeeper turns faster than expected, and his cudgel finds your ribs before yours finds him.",
+                        resolutionTextSk = "Hájnik sa otočí rýchlejšie, než si čakal, a jeho kyjak nájde tvoje rebrá skôr, než ty jeho.",
+                        bridgeTextEn = "You limp home empty-handed, the warning meant for him now a lesson for you.",
+                        bridgeTextSk = "Krívajúc sa vraciaš domov s prázdnymi rukami, výstraha určená jemu je teraz lekciou pre teba."
+                    ),
+                    skillCheck = SkillCheck(
+                        attribute = SkillAttribute.MIGHT,
+                        difficulty = 55,
+                        successConsequence = ChoiceConsequence(
+                            regionalTensionChange = 25, notorietyChange = 25, factionChanges = mapOf(Faction.PEASANTS to 20),
+                            attributeChanges = mapOf("MIGHT" to 3),
+                            addFlags = setOf("FOREST_OUTLAW"),
+                            resolutionTextEn = "Fists and boots fall on the gamekeeper until he begs for his life among the marker stones.",
+                            resolutionTextSk = "Päste a čižmy dopadajú na hájnika, kým neprosí o život medzi hraničnými kameňmi.",
+                            bridgeTextEn = "Word of the beating spreads through every hearth in the valley by morning.",
+                            bridgeTextSk = "Chýr o výprasku sa do rána rozšíri pri každom kozube v údolí."
+                        ),
+                        failureConsequence = ChoiceConsequence(
+                            healthChange = -20, regionalTensionChange = 15,
+                            resolutionTextEn = "The gamekeeper turns faster than expected, and his cudgel finds your ribs before yours finds him.",
+                            resolutionTextSk = "Hájnik sa otočí rýchlejšie, než si čakal, a jeho kyjak nájde tvoje rebrá skôr, než ty jeho.",
+                            bridgeTextEn = "You limp home empty-handed, the warning meant for him now a lesson for you.",
+                            bridgeTextSk = "Krívajúc sa vraciaš domov s prázdnymi rukami, výstraha určená jemu je teraz lekciou pre teba."
+                        )
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_poverty_crusade",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.PEASANT,
+            condition = { (it.factions[Faction.CHURCH] ?: 50) > 40 || it.worldFlags.contains("HERETIC_THREAT") },
+            titleEn = "The Crusade of the Poor",
+            titleSk = "Krížová Výprava Chudoby",
+            textEn = "A wandering renegade priest has gathered thousands of barefoot peasants, marching south, certain their faith alone will stop swords. He calls on you to abandon your field and join.",
+            textSk = "Potulný renegátsky kňaz zhromaždil tisíce bosých sedliakov. Kráčajú smerom na juh a veria, že ich viera zastaví meče. Žiada ťa, aby si opustil svoje pole a pridal sa.",
+            location = "Village",
+            npcName = "Preacher Odilo",
+            npcTitle = "Renegade Preacher",
+            npcArchetype = "ELDER",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Abandon your field, take up the cross, and march", textSk = "Opustiť pole, vziať rodový kríž a pridať sa k pochodu",
+                    tagEn = "Crusade", tagSk = "Výprava", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -20, factionChanges = mapOf(Faction.CHURCH to 40, Faction.PEASANTS to 30),
+                        addFlags = setOf("CRUSADER_PEASANT"),
+                        resolutionTextEn = "You fall into step with the barefoot column, Odilo's psalm rising over the dusty road.",
+                        resolutionTextSk = "Zaradíš sa do bosej kolóny, kým Odilov žalm stúpa nad prašnou cestou.",
+                        bridgeTextEn = "Your field stands untended behind you, your fate now tied to this march.",
+                        bridgeTextSk = "Tvoje pole ostáva neobrobené za tebou, tvoj osud je teraz spätý s týmto pochodom."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Report the preacher to the bailiffs as a dangerous rabble-rouser", textSk = "Udať kňaza panským drábom ako nebezpečného rozvracača",
+                    tagEn = "Betrayal", tagSk = "Zrada", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 30, factionChanges = mapOf(Faction.NOBILITY to 25, Faction.PEASANTS to -40),
+                        addFlags = setOf("JUDAS_PRIEST"),
+                        resolutionTextEn = "Bailiffs seize Odilo mid-sermon as you collect your reward with lowered eyes.",
+                        resolutionTextSk = "Drábi zajmú Odila uprostred kázne, kým si so sklopenými očami vyzdvihneš odmenu.",
+                        bridgeTextEn = "The scattered marchers curse your name as they're driven back to their fields.",
+                        bridgeTextSk = "Rozohnaní pútnici preklínajú tvoje meno, kým ich naháňajú späť na polia."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Sell old blades and fake relics to the marching pilgrims", textSk = "Predávať staré zbrane a neúčinné relikvie pochodujúcim",
+                    tagEn = "Profiteering", tagSk = "Zbohatlíctvo", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 50, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 15),
+                        addFlags = setOf("WAR_MERCHANT"),
+                        resolutionTextEn = "Rusted blades and painted pebbles change hands for coin the marchers can ill afford.",
+                        resolutionTextSk = "Hrdzavé čepele a pomaľované kamienky menia majiteľa za mince, ktoré si pútnici sotva môžu dovoliť.",
+                        bridgeTextEn = "The column marches on, poorer and no better armed than before.",
+                        bridgeTextSk = "Kolóna pochoduje ďalej, chudobnejšia a o nič lepšie vyzbrojená než predtým."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_fled_executioner",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.PEASANT,
+            flavorEligible = true,
+            condition = { influence(it, UNDERWORLD_AFFINITY) > 20 },
+            titleEn = "The Fled Executioner in the Barn",
+            titleSk = "Zbehnutý Panský Kat v Maštali",
+            textEn = "The manor executioner, sickened by the number of executions the Lord forced upon him, has fled and hides in your straw. He carries torture instruments and a manor strongbox.",
+            textSk = "Mestský kat, zhnusený množstvom popráv, ktoré musel vykonať pre lorda, utiekol. Schováva sa v tvojej slame. Má u seba mučiarenské nástroje a panskú pokladničku.",
+            location = "Village",
+            npcName = "Executioner Grendel",
+            npcTitle = "Fled Executioner",
+            npcArchetype = "BANDIT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Hand him over to the bailiffs for a reward", textSk = "Odovzdať ho panským drábom za odmenu",
+                    tagEn = "Informing", tagSk = "Udanie", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 25, factionChanges = mapOf(Faction.NOBILITY to 15),
+                        addFlags = setOf("EXECUTIONER_INFORMANT"),
+                        resolutionTextEn = "Bailiffs drag Grendel from your straw as you count your reward with a heavy conscience.",
+                        resolutionTextSk = "Drábi vyvlečú Grendela z tvojej slamy, kým si s ťažkým svedomím počítaš odmenu.",
+                        bridgeTextEn = "You wonder what fate awaits a fled executioner returned to his master.",
+                        bridgeTextSk = "Premýšľaš, aký osud čaká zbehnutého kata vráteného jeho pánovi."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Hide him and learn his grim trade from him", textSk = "Ukryť ho a naučiť sa od neho anatomické rezy/mučenie",
+                    tagEn = "Apprenticeship", tagSk = "Učňovstvo", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        notorietyChange = 10, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 20),
+                        addItems = setOf("Executioner_Blade"),
+                        addFlags = setOf("TORTURER_APPRENTICE"),
+                        resolutionTextEn = "Grendel teaches you, in whispers, the grim anatomy of his trade over many nights.",
+                        resolutionTextSk = "Grendel ťa v šepote učí pochmúrnu anatómiu svojho remesla počas mnohých nocí.",
+                        bridgeTextEn = "His blade is yours now, along with knowledge you wish you didn't have.",
+                        bridgeTextSk = "Jeho čepeľ je teraz tvoja, spolu s poznaním, ktoré by si radšej nemal."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Buy his manor strongbox for bread and clothes", textSk = "Odkúpiť jeho panskú pokladničku za chlieb a šaty",
+                    tagEn = "Trade", tagSk = "Obchod", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -10, goldChange = 40,
+                        addFlags = setOf("BLOOD_MONEY_HOLDER"),
+                        resolutionTextEn = "Grendel trades the manor strongbox for a loaf and a worn cloak, desperate to travel light.",
+                        resolutionTextSk = "Grendel vymení panskú pokladničku za bochník a obnosený plášť, zúfalý cestovať nalahko.",
+                        bridgeTextEn = "The coin inside feels colder than any you've held before.",
+                        bridgeTextSk = "Mince vnútri pôsobia chladnejšie než ktorékoľvek, čo si kedy držal."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_false_miracle",
+            phase = EventPhase.PHASE_2,
+            originClass = OriginClass.PEASANT,
+            flavorEligible = true,
+            minTurn = 12, maxTurn = 16,
+            titleEn = "The False Blood Miracle in the Field",
+            titleSk = "Falošný Krvavý Zázrak na Poli",
+            textEn = "Red stains resembling a bleeding cross have appeared on your wheat sheaf. The priest declares it a holy sign, and pilgrims begin trampling your crop to reach it.",
+            textSk = "Na tvojom pšeničnom snope sa objavili škvrny pripomínajúce krvavý kríž. Kňaz vyhlasuje, že je to sväté znamenie a zástupy pútnikov začínajú prúdiť cez tvoje pole.",
+            location = "Village",
+            npcName = "Parish Priest Ewald",
+            npcTitle = "Village Priest",
+            npcArchetype = "PRIEST",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Charge pilgrims a fee to kiss the sacred sheaf", textSk = "Oplatiť pútnické miesto, vyberať poplatok za bozkanie snopu",
+                    tagEn = "Profiteering", tagSk = "Zbohatlíctvo", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 60, factionChanges = mapOf(Faction.CHURCH to 20),
+                        addFlags = setOf("MIRACLE_PROFITEER"),
+                        resolutionTextEn = "A line of pilgrims forms at your fence, coin ready, eager to kiss the stained sheaf.",
+                        resolutionTextSk = "Pri tvojom plote sa vytvorí rad pútnikov s mincou pripravenou pobozkať zafarbený snop.",
+                        bridgeTextEn = "Your trampled field yields little grain this year, but far more silver.",
+                        bridgeTextSk = "Tvoje pošliapané pole tento rok neurodí veľa zrna, no oveľa viac striebra."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Admit it's only red mold and disperse the crowd", textSk = "Priznať, že je to len červená huba/pleseň a rozohnať dav",
+                    tagEn = "Truth", tagSk = "Pravda", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.PEASANTS to 10, Faction.CHURCH to -20),
+                        addFlags = setOf("HERETIC_TRUTHTELLER"),
+                        resolutionTextEn = "You break the sheaf open before the crowd, revealing the mundane red mold beneath.",
+                        resolutionTextSk = "Rozlomíš snop pred davom a odhalíš pod ním obyčajnú červenú plesň.",
+                        bridgeTextEn = "Ewald's face darkens as the disappointed pilgrims drift away.",
+                        bridgeTextSk = "Ewaldova tvár stemnie, kým sklamaní pútnici odchádzajú."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Sell the 'holy sheaf' to a wealthy monastery", textSk = "Predať 'svätý snop' bohatému kláštoru za obrovskú sumu",
+                    tagEn = "Relic Trade", tagSk = "Obchod s Relikviou", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 80, factionChanges = mapOf(Faction.NOBILITY to 15),
+                        addFlags = setOf("RELIC_SELLER"),
+                        resolutionTextEn = "Monastery envoys pay a startling sum for the sheaf, wrapping it in silk for the journey home.",
+                        resolutionTextSk = "Kláštorní vyslanci zaplatia ohromujúcu sumu za snop a zabalia ho do hodvábu na cestu domov.",
+                        bridgeTextEn = "You watch your field's false miracle carried off toward a life of veneration.",
+                        bridgeTextSk = "Sleduješ, ako falošný zázrak z tvojho poľa odnášajú do života uctievania."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_plague_doctor",
+            phase = EventPhase.PHASE_3,
+            originClass = OriginClass.PEASANT,
+            minTurn = 17, maxTurn = 19,
+            forcedPriority = true,
+            titleEn = "The Plague Doctor with the Bird Mask",
+            titleSk = "Morový Lekár s Vtáčou Maskou",
+            textEn = "A rider in a leather coat and beaked bird mask has appeared on the horizon. He burns healing herbs at the village entrance and declares a strict quarantine - no one may leave the estate.",
+            textSk = "Na obzore sa objavil jazdec v koženom plášti a s vtáčím zobákom na tvári. Zapaľuje liečivé byliny pri vstupe do dediny. Vyhlasuje prísnu karanténu – nikto nesmie opustiť panstvo.",
+            location = "Village",
+            npcName = "The Plague Doctor",
+            npcTitle = "Masked Physician",
+            npcArchetype = "ALCHEMIST",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Submit to quarantine and shut yourself in your cottage", textSk = "Podrobiť sa karanténe a zatvoriť sa v chalupe",
+                    tagEn = "Quarantine", tagSk = "Karanténa", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -15, goldChange = -10,
+                        addFlags = setOf("QUARANTINE_SURVIVOR"),
+                        resolutionTextEn = "You bar your door and wait out the doctor's edict, hunger gnawing at your patience.",
+                        resolutionTextSk = "Zatarasíš dvere a čakáš na koniec lekárovho príkazu, hlad hlodá tvoju trpezlivosť.",
+                        bridgeTextEn = "Whatever comes for this land, it seems you'll face it from behind closed shutters.",
+                        bridgeTextSk = "Nech na túto zem príde čokoľvek, zdá sa, že to budeš čeliť spoza zatvorených okeníc."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Bribe the doctor for a medical travel pass", textSk = "Pristúpiť k doktorovi, podplatiť ho a získať lekársky priepustok",
+                    tagEn = "Bribe", tagSk = "Úplatok", cardArchetype = "Merchant_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -30,
+                        addItems = setOf("Plague_Doctor_Pass"),
+                        addFlags = setOf("IMMUNE_CITIZEN"),
+                        resolutionTextEn = "The masked doctor pockets your silver and presses a sealed pass into your hand.",
+                        resolutionTextSk = "Maskovaný lekár si schová tvoje striebro a vtlačí ti do ruky zapečatený priepustok.",
+                        bridgeTextEn = "Whatever comes next, you at least have a way past the quarantine lines.",
+                        bridgeTextSk = "Nech príde čokoľvek, aspoň máš spôsob, ako sa dostať za hranice karantény."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Drive the doctor away with stones, claiming he brings death", textSk = "Vyhnať doktora kameňmi, že nosí smrť",
+                    tagEn = "Denial", tagSk = "Popretie", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        regionalTensionChange = 20, factionChanges = mapOf(Faction.PEASANTS to 15),
+                        addFlags = setOf("PLAGUE_DENIER"),
+                        resolutionTextEn = "Stones fly and the bird-masked doctor retreats, cursing the village's blindness.",
+                        resolutionTextSk = "Lietajú kamene a lekár s vtáčou maskou ustupuje, preklínajúc slepotu dediny.",
+                        bridgeTextEn = "Whether he was right or wrong, no one will know until it's far too late.",
+                        bridgeTextSk = "Či mal pravdu alebo nie, nikto to nebude vedieť, kým nebude priveľmi neskoro."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_bloody_fields",
+            phase = EventPhase.PHASE_3,
+            originClass = OriginClass.PEASANT,
+            condition = { (it.worldFlags.contains("REBELLION_LEADER") || it.worldFlags.contains("AGITATOR")) && it.regionalTension > 70 },
+            titleEn = "The Bloody Fields by the Mill",
+            titleSk = "Krvavé Polia pri Mlyne",
+            textEn = "Peasants armed with scythes and flails have stormed the manor steward's holdfast. The steward hangs from an oak tree, and the mob parades his clothes on pikes. The treasury doors lie broken open.",
+            textSk = "Sedliaci vyzbrojení kôstkami a kosami prepadli tvrď panského správcu. Správca visí na dube a dav nosí na tyčiach jeho šaty. Dvere panskej pokladnice sú vyrazené.",
+            location = "Village",
+            npcName = "The Rebellious Mob",
+            npcTitle = "Peasant Uprising",
+            npcArchetype = "PEASANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Take command of the uprising and march on the county castle", textSk = "Zobrať velenie povstania a nasmerovať dav na krajský hrad",
+                    tagEn = "Rebellion", tagSk = "Povstanie", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        regionalTensionChange = 30, notorietyChange = 30, factionChanges = mapOf(Faction.PEASANTS to 30),
+                        addFlags = setOf("WARLORD_OF_THE_POOR"),
+                        resolutionTextEn = "The mob roars your name as you raise a pitchfork toward the distant castle towers.",
+                        resolutionTextSk = "Dav revie tvoje meno, kým dvíhaš vidly smerom k vzdialeným hradným vežiam.",
+                        bridgeTextEn = "History will remember this march, one way or another.",
+                        bridgeTextSk = "Tento pochod si história zapamätá, tak či onak."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Grab from the treasury and slip away into the dark", textSk = "Nahrabať si z pokladnice a potichu zmiznúť v tme",
+                    tagEn = "Looting", tagSk = "Rabovanie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 70, influenceChanges = mapOf(UNDERWORLD_AFFINITY to 20),
+                        addFlags = setOf("BLOODY_PLUNDERER"),
+                        resolutionTextEn = "While the mob chants around the hanging steward, you fill your sack from the broken vault.",
+                        resolutionTextSk = "Kým dav skanduje okolo obeseného správcu, naplníš si vrece z rozbitej klenby.",
+                        bridgeTextEn = "You melt into the crowd, richer and unnoticed.",
+                        bridgeTextSk = "Roztopíš sa v dave, bohatší a nepovšimnutý."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Save the steward's daughter from the mob and deliver her to the knights", textSk = "Zachrániť správcovu dcéru pred davom a odovzdať ju rytierom",
+                    tagEn = "Rescue", tagSk = "Záchrana", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        factionChanges = mapOf(Faction.NOBILITY to 30, Faction.PEASANTS to -50),
+                        addFlags = setOf("SAVIOR_OF_THE_NOBLE"),
+                        resolutionTextEn = "You shield the weeping girl with your body as the mob's fury turns briefly toward you instead.",
+                        resolutionTextSk = "Vlastným telom zaštítiš plačúce dievča, kým sa zúrivosť davu na chvíľu obráti na teba.",
+                        bridgeTextEn = "The knights who take her from your arms will not forget this act.",
+                        bridgeTextSk = "Rytieri, čo si ju prevezmú z tvojich rúk, na tento skutok nezabudnú."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_serfs_fleeing",
+            phase = EventPhase.PHASE_3,
+            originClass = OriginClass.PEASANT,
+            condition = { it.gold < 10 && it.worldFlags.contains("STARVING") },
+            titleEn = "The Serfs Fleeing to the Neighboring Estate",
+            titleSk = "Zbehnutie Poddaných na Susedné Panstvo",
+            textEn = "Your neighbors are packing carts in the dead of night. Word has spread that the free city across the river grants freedom to any serf who survives a year and a day within its walls. Dusk is your only chance.",
+            textSk = "Tvoji susedia v noci balia vozy. Počuli, že slobodné mesto za riekou ponúka slobodu poddanému po roku a dni v jeho múroch. Súmrak je tvojou jedinou šancou.",
+            location = "Village",
+            npcName = "Fleeing Neighbor Osmund",
+            npcTitle = "Departing Serf",
+            npcArchetype = "PEASANT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Flee with them by night and let your cottage burn", textSk = "Mazať s nimi v noci a nechať chalupu zhorieť",
+                    tagEn = "Flight", tagSk = "Útek", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        addFlags = setOf("RUNAWAY_SERF"),
+                        resolutionTextEn = "You leave your cottage's door swinging open behind you, joining the creaking line of carts into the dark.",
+                        resolutionTextSk = "Necháš dvere svojej chalupy otvorené za sebou a pridáš sa k vŕzgajúcemu radu vozov do tmy.",
+                        bridgeTextEn = "Whatever waits across the river, it cannot be worse than what you're leaving.",
+                        bridgeTextSk = "Nech čaká za riekou čokoľvek, nemôže to byť horšie než to, čo opúšťaš."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Report the runaways to the bailiffs for a bounty per head", textSk = "Udať útek panským drábom a získať odmenu za každú hlavu",
+                    tagEn = "Informing", tagSk = "Udanie", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 40, factionChanges = mapOf(Faction.NOBILITY to 20, Faction.PEASANTS to -50),
+                        addFlags = setOf("SERF_INFORMER"),
+                        resolutionTextEn = "Bailiffs ride out before the carts clear the boundary stones, dragging your neighbors back in chains.",
+                        resolutionTextSk = "Drábi vyrazia skôr, než vozy prejdú hraničné kamene, a vlečú tvojich susedov späť v reťaziach.",
+                        bridgeTextEn = "The bounty coin feels heavier in your pocket than it should.",
+                        bridgeTextSk = "Odmena vo vrecku pôsobí ťažšie, než by mala."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Stand in their way and argue for staying to fight for home", textSk = "Zastaviť ich vlastným telom a prehovárať na boj domov",
+                    tagEn = "Loyalty", tagSk = "Vernosť", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        regionalTensionChange = 15, factionChanges = mapOf(Faction.PEASANTS to 20),
+                        addFlags = setOf("COMMUNITY_ANCHOR"),
+                        resolutionTextEn = "Your words cut through the dark, and one by one the carts come to a reluctant halt.",
+                        resolutionTextSk = "Tvoje slová preniknú tmou a vozy jeden po druhom neochotne zastavia.",
+                        bridgeTextEn = "The village stays whole for now, bound by your stubborn plea.",
+                        bridgeTextSk = "Dedina zostáva zatiaľ celistvá, spätá tvojou tvrdohlavou prosbou."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_scorched_earth",
+            phase = EventPhase.PHASE_3,
+            originClass = OriginClass.PEASANT,
+            minTurn = 23, maxTurn = 23,
+            forcedPriority = true,
+            titleEn = "Scorched Earth and Royal Confiscations",
+            titleSk = "Spálená Zem a Kráľovské Konfiškácie",
+            textEn = "An enemy army approaches. The King's own soldiers are burning their own villages and granaries so the enemy finds not a single grain of wheat. Your home stands in the flames' path.",
+            textSk = "Blíži sa nepriateľská armáda. Kráľovskí vojaci pália vlastné dediny a sýpky, aby nepriateľ nenašiel ani zrnko obilia. Tvoj dom stojí v ceste plameňom.",
+            location = "Village",
+            npcName = "Royal Sergeant",
+            npcTitle = "Scorched-Earth Detachment",
+            npcArchetype = "KNIGHT",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Fight the soldiers with a pitchfork at your own threshold", textSk = "Bojovať so žoldnierom s vidlami pri vlastnom prahu",
+                    tagEn = "Defense", tagSk = "Obrana", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -30, factionChanges = mapOf(Faction.PEASANTS to 30),
+                        addFlags = setOf("DEFENDER_OF_THE_HEARTH"),
+                        resolutionTextEn = "You stand in your own doorway, pitchfork raised, as the sergeant's torch bearers hesitate.",
+                        resolutionTextSk = "Stojíš vo vlastných dverách so zdvihnutými vidlami, kým nosiči fakieľ zaváhajú.",
+                        bridgeTextEn = "Your home still stands, scarred and smoke-stained, but standing.",
+                        bridgeTextSk = "Tvoj domov stále stojí, zjazvený a začadený dymom, no stojí."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Join the burning detail and torch neighboring homes for pay", textSk = "Pridať sa k zariaďovacím oddielom a páliť susedné domy za plat",
+                    tagEn = "Complicity", tagSk = "Spoluúčasť", cardArchetype = "Noble_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 30, factionChanges = mapOf(Faction.NOBILITY to 20, Faction.PEASANTS to -40),
+                        addFlags = setOf("CROWN_BURNER"),
+                        resolutionTextEn = "You carry the torch yourself, setting your neighbors' thatch alight for the sergeant's coin.",
+                        resolutionTextSk = "Sám nesieš fakľu a zapaľuješ susedovu strechu za sergeantovu mincu.",
+                        bridgeTextEn = "The smoke of homes you once knew rises behind you as you collect your pay.",
+                        bridgeTextSk = "Dym domov, ktoré si kedysi poznal, sa za tebou dvíha, kým si vyberáš odmenu."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Flee into the deep marshes with your family and belongings", textSk = "Utiecť do hlbokých močiarov s rodinou a majetkom",
+                    tagEn = "Flight", tagSk = "Útek", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = -10,
+                        addFlags = setOf("SWAMP_DWELLER"),
+                        resolutionTextEn = "You wade into the cold marsh reeds, family and bundles in tow, as smoke rises behind you.",
+                        resolutionTextSk = "Brodíš sa do studenej trstiny močiara, s rodinou a batohmi v závese, kým sa za tebou dvíha dym.",
+                        bridgeTextEn = "Whatever remains of your home, it is no longer yours to protect.",
+                        bridgeTextSk = "Nech z tvojho domova zostáva čokoľvek, už nie je tvoje, čo by si mal chrániť."
+                    )
+                )
+            )
+        ),
+
+        EventNode(
+            id = "p1_ominous_sign",
+            phase = EventPhase.PHASE_3,
+            originClass = OriginClass.PEASANT,
+            minTurn = 24, maxTurn = 24,
+            forcedPriority = true,
+            titleEn = "The Ominous Sign in the Sky",
+            titleSk = "Zlovestné Znamenie na Oblohe",
+            textEn = "A blood-red comet has appeared over Oakvale. Church bells toll in alarm, villagers weep on their knees, and the Inquisition whispers of the End of Days.",
+            textSk = "Nad Dubovou Dolinou sa objavila krvavo červená kométa. Zvonice bijú na poplach, dedinčania plačú na kolenách a Inkvizícia predpovedá Koniec Sveta.",
+            location = "Village",
+            npcName = "The Terrified Village",
+            npcTitle = "Omen",
+            npcArchetype = "ELDER",
+            choices = listOf(
+                EventChoice(
+                    id = 1, textEn = "Use the panic to loot the manor houses", textSk = "Využiť paniku na drancovanie pánskych domov",
+                    tagEn = "Looting", tagSk = "Rabovanie", cardArchetype = "Underworld_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = 50, notorietyChange = 30,
+                        addFlags = setOf("APOCALYPSE_LOOTER"),
+                        resolutionTextEn = "While the village kneels praying at the comet, you slip through unguarded manor doors.",
+                        resolutionTextSk = "Kým dedina kľačí a modlí sa ku kométe, prekĺzneš cez nestráženými panskými dverami.",
+                        bridgeTextEn = "Whatever tomorrow brings, you'll face it with a heavier purse.",
+                        bridgeTextSk = "Nech zajtrajšok prinesie čokoľvek, budeš mu čeliť s ťažším mešcom."
+                    )
+                ),
+                EventChoice(
+                    id = 2, textEn = "Give your last gold to the Church for your soul's salvation", textSk = "Dávať posledné zlato Cirkvi na spásu duše",
+                    tagEn = "Repentance", tagSk = "Pokánie", cardArchetype = "Church_Action",
+                    consequence = ChoiceConsequence(
+                        goldChange = -9999, factionChanges = mapOf(Faction.CHURCH to 40),
+                        addFlags = setOf("CLEANSED_SOUL"),
+                        resolutionTextEn = "You empty your purse onto the altar as the comet burns crimson through the chapel window.",
+                        resolutionTextSk = "Vyprázdniš mešec na oltár, kým kométa horí karmínovo cez okno kaplnky.",
+                        bridgeTextEn = "You kneel poorer but lighter, whatever the End of Days may bring.",
+                        bridgeTextSk = "Kľačíš chudobnejší, no ľahší na duši, nech Koniec Sveta prinesie čokoľvek."
+                    )
+                ),
+                EventChoice(
+                    id = 3, textEn = "Gather weapons and prepare for whatever chaos comes next", textSk = "Zhromaždiť zbrane a pripraviť sa na chaos, čo príde",
+                    tagEn = "Preparation", tagSk = "Príprava", cardArchetype = "Peasant_Action",
+                    consequence = ChoiceConsequence(
+                        healthChange = 10, regionalTensionChange = 15,
+                        addItems = setOf("Improvised_Weapon"),
+                        addFlags = setOf("READY_FOR_WAR"),
+                        resolutionTextEn = "You gather what blades and cudgels you can find, watching the blood-red comet with grim resolve.",
+                        resolutionTextSk = "Zhromaždíš, aké čepele a kyjaky nájdeš, a s pochmúrnym odhodlaním sleduješ krvavo červenú kométu.",
+                        bridgeTextEn = "Whatever the comet portends, you intend to meet it standing.",
+                        bridgeTextSk = "Nech kométa veští čokoľvek, chceš to privítať postojačky."
+                    )
+                )
+            )
         )
+
+        // ---------------------------------------------------------------------
     )
 
     // ---------------------------------------------------------------------

@@ -38,6 +38,7 @@ data class GameSaveEntity(
     val visitedNodeIdsJson: String = "[]",
     val inventoryItemIdsJson: String = "[]",
     val hiddenInfluencesJson: String = "{}",
+    val attributesJson: String = "{}",
     val timestamp: Long = System.currentTimeMillis()
 ) {
     fun toWorldState(): WorldState {
@@ -116,6 +117,21 @@ data class GameSaveEntity(
             e.printStackTrace()
         }
 
+        val attributesMap = mutableMapOf<String, Int>()
+        try {
+            val attributesObj = JSONObject(attributesJson)
+            val keys = attributesObj.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                attributesMap[key] = attributesObj.optInt(key, 40)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        if (attributesMap.isEmpty()) {
+            attributesMap.putAll(origin.initialAttributes)
+        }
+
         return WorldState(
             currentChapter = currentChapter,
             activeOrigin = origin,
@@ -141,7 +157,8 @@ data class GameSaveEntity(
             currentNodeId = currentNodeId,
             visitedNodeIds = visitedNodesSet,
             inventoryItemIds = inventorySet,
-            hiddenInfluences = influencesMap
+            hiddenInfluences = influencesMap,
+            attributes = attributesMap
         )
     }
 
@@ -166,6 +183,9 @@ data class GameSaveEntity(
 
             val influencesObj = JSONObject()
             state.hiddenInfluences.forEach { (key, value) -> influencesObj.put(key, value) }
+
+            val attributesObj = JSONObject()
+            state.attributes.forEach { (key, value) -> attributesObj.put(key, value) }
 
             return GameSaveEntity(
                 id = 1,
@@ -193,7 +213,8 @@ data class GameSaveEntity(
                 currentNodeId = state.currentNodeId,
                 visitedNodeIdsJson = visitedArr.toString(),
                 inventoryItemIdsJson = inventoryArr.toString(),
-                hiddenInfluencesJson = influencesObj.toString()
+                hiddenInfluencesJson = influencesObj.toString(),
+                attributesJson = attributesObj.toString()
             )
         }
     }

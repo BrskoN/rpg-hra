@@ -270,6 +270,18 @@ class GeminiApiService {
 
                 append(originLaneGuidance(worldState.activeOrigin, worldState.selectedLanguage))
 
+                val samples = EventDeck.fewShotSamples(worldState)
+                if (samples.isNotEmpty()) {
+                    append("REFERENCE TONE - these are REAL authored cards from this exact storyline (do NOT reuse their plot, only match their tone, scale, and rough length):\n")
+                    samples.forEach { sample ->
+                        val sampleTitle = if (isSlovak) sample.titleSk else sample.titleEn
+                        val sampleText = if (isSlovak) sample.textSk else sample.textEn
+                        val sampleChoices = sample.choices.joinToString("; ") { if (isSlovak) it.textSk else it.textEn }
+                        append("- \"$sampleTitle\": $sampleText Choices: $sampleChoices\n")
+                    }
+                    append("\n")
+                }
+
                 append("CURRENT STATE: Player class: $activeTitle. Turn: ${worldState.turnCount}. Gold: ${worldState.gold}. Health: ${worldState.health}. ")
                 append("Tension: ${worldState.regionalTension}. Notoriety: ${worldState.notoriety}.\n\n")
 

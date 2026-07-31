@@ -1,5 +1,10 @@
 package com.example.data
 
+/** Attribute keys used by SkillCheck resolution. Stored as plain strings in WorldState.attributes so no migration is needed if more are added later. */
+enum class SkillAttribute {
+    MIGHT, CUNNING, CHARISMA
+}
+
 enum class OriginClass(
     val title: String,
     val subtitle: String,
@@ -8,7 +13,8 @@ enum class OriginClass(
     val baseHealth: Int,
     val initialFactions: Map<Faction, Int>,
     val heraldicSymbol: String,
-    val reqDescription: String = "Available at start"
+    val reqDescription: String = "Available at start",
+    val initialAttributes: Map<String, Int> = mapOf("MIGHT" to 40, "CUNNING" to 40, "CHARISMA" to 40)
 ) {
     PEASANT(
         title = "Peasant",
@@ -24,7 +30,8 @@ enum class OriginClass(
             Faction.GUILDS to 30
         ),
         heraldicSymbol = "P",
-        reqDescription = "Standard Origin"
+        reqDescription = "Standard Origin",
+        initialAttributes = mapOf("MIGHT" to 55, "CUNNING" to 40, "CHARISMA" to 30)
     ),
     GUILD_APPRENTICE(
         title = "Guild Apprentice",
@@ -40,7 +47,8 @@ enum class OriginClass(
             Faction.GUILDS to 75
         ),
         heraldicSymbol = "G",
-        reqDescription = "Standard Origin"
+        reqDescription = "Standard Origin",
+        initialAttributes = mapOf("MIGHT" to 30, "CUNNING" to 55, "CHARISMA" to 40)
     ),
     ACOLYTE(
         title = "Acolyte",
@@ -56,7 +64,8 @@ enum class OriginClass(
             Faction.GUILDS to 35
         ),
         heraldicSymbol = "A",
-        reqDescription = "Standard Origin"
+        reqDescription = "Standard Origin",
+        initialAttributes = mapOf("MIGHT" to 25, "CUNNING" to 35, "CHARISMA" to 50)
     ),
     LESSER_NOBLE(
         title = "Lesser Noble",
@@ -72,7 +81,8 @@ enum class OriginClass(
             Faction.GUILDS to 35
         ),
         heraldicSymbol = "🏰",
-        reqDescription = "Standard Origin"
+        reqDescription = "Standard Origin",
+        initialAttributes = mapOf("MIGHT" to 35, "CUNNING" to 30, "CHARISMA" to 55)
     ),
     BARON(
         title = "Baron",
@@ -285,7 +295,9 @@ data class WorldState(
     /** Simple item-id ledger for EventDeck gating (e.g. "Forged_Pass", "Stolen_Relic"). */
     val inventoryItemIds: Set<String> = emptySet(),
     /** Hidden personal influence trackers distinct from faction reputation (e.g. "Underworld_Affinity", "Church_Grace"). */
-    val hiddenInfluences: Map<String, Int> = emptyMap()
+    val hiddenInfluences: Map<String, Int> = emptyMap(),
+    /** RPG attribute scores (0-100) keyed by SkillAttribute.name (MIGHT/CUNNING/CHARISMA), used by EventChoice skill checks. */
+    val attributes: Map<String, Int> = emptyMap()
 )
 
 fun OriginClass.getLocalizedTitle(lang: AppLanguage): String = when (lang) {
