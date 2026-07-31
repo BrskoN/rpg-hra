@@ -56,7 +56,10 @@ data class EventOption(
     val id: Int,
     val text: String,
     val tag: String = "Action",
-    val cardArchetype: String = "Peasant_Action" // "Peasant_Action", "Merchant_Action", "Noble_Action", "Church_Action", "Underworld_Action"
+    val cardArchetype: String = "Peasant_Action", // "Peasant_Action", "Merchant_Action", "Noble_Action", "Church_Action", "Underworld_Action"
+    /** Set when this option comes from the authored EventDeck rather than AI/offline generation. */
+    val sourceNodeId: String? = null,
+    val sourceChoiceId: Int? = null
 )
 
 data class StatChanges(

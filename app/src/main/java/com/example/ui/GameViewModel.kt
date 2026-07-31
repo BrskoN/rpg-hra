@@ -21,6 +21,8 @@ import kotlinx.coroutines.launch
 
 import com.example.data.OriginSeed
 import com.example.data.StoryAnchor
+import com.example.data.EventDeck
+import com.example.data.NodeKind
 
 import com.example.data.AppLanguage
 
@@ -134,10 +136,20 @@ class GameViewModel @JvmOverloads constructor(
         val currentWorld = _worldState.value
         if (currentWorld.isGameOver || _isLoading.value) return
 
+        val isDeckChoice = option.sourceNodeId != null && option.sourceChoiceId != null
+
         viewModelScope.launch {
             _isLoading.value = true
 
-            val nextResponse = repository.getNextEvent(currentWorld, option.text)
+            val chosenDeckChoice = if (isDeckChoice) {
+                EventDeck.findChoice(option.sourceNodeId!!, option.sourceChoiceId!!)?.second
+            } else null
+
+            val nextResponse = if (isDeckChoice) {
+                EventDeck.buildChoiceResolution(option.sourceNodeId!!, option.sourceChoiceId!!, currentWorld.selectedLanguage)
+            } else {
+                repository.getNextEvent(currentWorld, option.text)
+            }
 
             val changes = nextResponse.statChanges
             val netGoldChange = changes.goldChange
@@ -249,11 +261,14 @@ class GameViewModel @JvmOverloads constructor(
                 lastActionConsequenceSummary = consequenceSummary,
                 currentActiveSceneContext = newActiveSceneContext,
                 currentActiveNpc = newActiveNpc,
-                activeSceneTurns = newSceneTurns
+                activeSceneTurns = newSceneTurns,
+                pendingNodeId = if (isDeckChoice) chosenDeckChoice?.nextNodeId else currentWorld.pendingNodeId
             )
 
             _worldState.value = updatedWorld
-            _currentEvent.value = nextResponse
+            // Deck-driven turns pick their next scenario fresh in continueNarrativeBridge/loadNextScenario
+            // (using the fully updated flags/stats), so leave currentEvent null to trigger that path.
+            _currentEvent.value = if (isDeckChoice) null else nextResponse
             _isLoading.value = false
 
             // Auto-save at the end of resolution / state calculation
@@ -388,7 +403,10 @@ class GameViewModel @JvmOverloads constructor(
             currentAnchorContext = seed.seedPromptContext,
             lastResolutionText = null,
             lastBridgeText = null,
-            lastChosenOptionText = null
+            lastChosenOptionText = null,
+            currentNodeId = null,
+            visitedNodeIds = emptySet(),
+            pendingNodeId = null
         )
 
         _worldState.value = updatedWorld
@@ -431,14 +449,35 @@ class GameViewModel @JvmOverloads constructor(
     private fun loadNextScenario(world: WorldState, chosenOptionText: String?, anchorContext: String? = world.currentAnchorContext) {
         viewModelScope.launch {
             _isLoading.value = true
-            val response = repository.getNextEvent(world, chosenOptionText, anchorContext)
+
+            val forcedNode = world.pendingNodeId?.let { EventDeck.findNode(it) }
+            val desiredKind = when {
+                world.turnCount == 1 -> NodeKind.OPENING
+                anchorContext != null -> NodeKind.ANCHOR
+                else -> NodeKind.SANDBOX
+            }
+            val deckNode = forcedNode ?: EventDeck.selectNode(world, desiredKind)
+
+            val response: EventResponse
+            var deckWorldUpdate: WorldState = world
+
+            if (deckNode != null) {
+                response = EventDeck.buildNodeResponse(deckNode, world.selectedLanguage)
+                deckWorldUpdate = world.copy(
+                    currentNodeId = deckNode.id,
+                    visitedNodeIds = world.visitedNodeIds + deckNode.id,
+                    pendingNodeId = null
+                )
+            } else {
+                response = repository.getNextEvent(world, chosenOptionText, anchorContext)
+            }
             _currentEvent.value = response
 
             val newActiveSceneContext = response.updatedActiveSceneContext?.takeIf { it.isNotBlank() && it != "null" }
             val newActiveNpc = response.updatedActiveNpc?.takeIf { it.isNotBlank() && it != "null" } ?: if (newActiveSceneContext != null) response.npcName else null
 
-            val updatedChars = if (response.npcName.isNotBlank()) (world.recentCharactersMet + response.npcName).takeLast(2) else world.recentCharactersMet
-            val updatedWorld = world.copy(
+            val updatedChars = if (response.npcName.isNotBlank()) (deckWorldUpdate.recentCharactersMet + response.npcName).takeLast(2) else deckWorldUpdate.recentCharactersMet
+            val updatedWorld = deckWorldUpdate.copy(
                 recentCharactersMet = updatedChars,
                 currentActiveSceneContext = newActiveSceneContext,
                 currentActiveNpc = newActiveNpc

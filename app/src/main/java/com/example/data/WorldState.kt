@@ -231,7 +231,10 @@ data class WorldState(
     val lastActionConsequenceSummary: String = "",
     val currentActiveSceneContext: String? = null,
     val currentActiveNpc: String? = null,
-    val activeSceneTurns: Int = 0
+    val activeSceneTurns: Int = 0,
+    val currentNodeId: String? = null,
+    val visitedNodeIds: Set<String> = emptySet(),
+    val pendingNodeId: String? = null
 )
 
 fun OriginClass.getLocalizedTitle(lang: AppLanguage): String = when (lang) {

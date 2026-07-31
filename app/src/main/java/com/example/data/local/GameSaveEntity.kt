@@ -34,6 +34,8 @@ data class GameSaveEntity(
     val lastActionConsequenceSummary: String = "",
     val currentActiveSceneContext: String? = null,
     val currentActiveNpc: String? = null,
+    val currentNodeId: String? = null,
+    val visitedNodeIdsJson: String = "[]",
     val timestamp: Long = System.currentTimeMillis()
 ) {
     fun toWorldState(): WorldState {
@@ -80,6 +82,16 @@ data class GameSaveEntity(
             e.printStackTrace()
         }
 
+        val visitedNodesSet = mutableSetOf<String>()
+        try {
+            val visitedArr = JSONArray(visitedNodeIdsJson)
+            for (i in 0 until visitedArr.length()) {
+                visitedNodesSet.add(visitedArr.getString(i))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         return WorldState(
             currentChapter = currentChapter,
             activeOrigin = origin,
@@ -101,7 +113,9 @@ data class GameSaveEntity(
             recentCharactersMet = charsList,
             lastActionConsequenceSummary = lastActionConsequenceSummary,
             currentActiveSceneContext = currentActiveSceneContext,
-            currentActiveNpc = currentActiveNpc
+            currentActiveNpc = currentActiveNpc,
+            currentNodeId = currentNodeId,
+            visitedNodeIds = visitedNodesSet
         )
     }
 
@@ -117,6 +131,9 @@ data class GameSaveEntity(
 
             val charsArr = JSONArray()
             state.recentCharactersMet.forEach { charsArr.put(it) }
+
+            val visitedArr = JSONArray()
+            state.visitedNodeIds.forEach { visitedArr.put(it) }
 
             return GameSaveEntity(
                 id = 1,
@@ -140,7 +157,9 @@ data class GameSaveEntity(
                 recentCharactersMetJson = charsArr.toString(),
                 lastActionConsequenceSummary = state.lastActionConsequenceSummary,
                 currentActiveSceneContext = state.currentActiveSceneContext,
-                currentActiveNpc = state.currentActiveNpc
+                currentActiveNpc = state.currentActiveNpc,
+                currentNodeId = state.currentNodeId,
+                visitedNodeIdsJson = visitedArr.toString()
             )
         }
     }
