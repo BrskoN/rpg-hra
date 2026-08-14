@@ -130,9 +130,11 @@ object EventDeck {
         if (forced.isNotEmpty()) return forced.random()
         if (eligible.isNotEmpty()) return eligible.random()
 
-        // Pool exhausted for this phase - allow repeats (except one-off climactic beats).
-        val repeatable = pool.filter { !it.forcedPriority && it.canTrigger(world) }
-        return repeatable.randomOrNull()
+        // Pool exhausted for this phase - every unvisited eligible card has been shown. Return null
+        // rather than ever re-showing an already-visited authored card: the caller (loadNextScenario)
+        // falls back to an AI-generated turn in that case, same as it already does when this origin
+        // has no deck at all. A card the player has already read must never reappear verbatim.
+        return null
     }
 
     /**
@@ -1383,7 +1385,7 @@ object EventDeck {
 
         EventNode(
             id = "p1_flagellant_procession",
-            phase = EventPhase.PHASE_2,
+            phase = EventPhase.PHASE_1,
             originClass = OriginClass.PEASANT,
             condition = { it.regionalTension > 40 || it.worldFlags.contains("STARVING") },
             titleEn = "The Wandering Flagellant Procession",
@@ -1437,7 +1439,7 @@ object EventDeck {
 
         EventNode(
             id = "p1_debased_coin",
-            phase = EventPhase.PHASE_2,
+            phase = EventPhase.PHASE_1,
             originClass = OriginClass.PEASANT,
             flavorEligible = true,
             condition = { it.gold >= 10 },
@@ -1566,7 +1568,7 @@ object EventDeck {
 
         EventNode(
             id = "p1_mercenary_company",
-            phase = EventPhase.PHASE_2,
+            phase = EventPhase.PHASE_1,
             originClass = OriginClass.PEASANT,
             condition = { it.regionalTension > 50 || it.worldFlags.contains("HARBORS_DESERTERS") },
             titleEn = "The Broken Mercenary Company in the Tavern",
@@ -1639,7 +1641,7 @@ object EventDeck {
 
         EventNode(
             id = "p1_royal_forest",
-            phase = EventPhase.PHASE_2,
+            phase = EventPhase.PHASE_1,
             originClass = OriginClass.PEASANT,
             condition = { it.worldFlags.contains("SECRET_POACHER") || it.worldFlags.contains("SUBMISSIVE") },
             titleEn = "The King's Reserved Forest",
@@ -1732,7 +1734,7 @@ object EventDeck {
 
         EventNode(
             id = "p1_poverty_crusade",
-            phase = EventPhase.PHASE_2,
+            phase = EventPhase.PHASE_1,
             originClass = OriginClass.PEASANT,
             condition = { (it.factions[Faction.CHURCH] ?: 50) > 40 || it.worldFlags.contains("HERETIC_THREAT") },
             titleEn = "The Crusade of the Poor",
