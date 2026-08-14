@@ -27,7 +27,7 @@ import com.example.data.AppLanguage
 
 class GameViewModel @JvmOverloads constructor(
     application: Application,
-    private val repository: GameRepository = GameRepository()
+    private val repository: GameRepository = GameRepository(application)
 ) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)

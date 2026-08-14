@@ -1,8 +1,13 @@
 package com.example.data
 
+import android.content.Context
 import kotlin.random.Random
 
-class GameRepository(private val geminiApiService: GeminiApiService = GeminiApiService()) {
+class GameRepository(
+    context: Context,
+    private val geminiApiService: GeminiApiService = GeminiApiService()
+) {
+    private val spiceEventCache = SpiceEventCache(context)
 
     suspend fun getNextEvent(
         worldState: WorldState,
@@ -18,12 +23,20 @@ class GameRepository(private val geminiApiService: GeminiApiService = GeminiApiS
     }
 
     /**
-     * Attempts a one-off AI-generated bonus vignette for an origin that already has an authored
-     * EventDeck, so a run gets a unique flavor detour instead of the exact same sandbox pool every
-     * time. Returns null (never throws) if there is no API key, no network, or the model call
-     * fails - callers must fall back to the authored deck content in that case.
+     * Returns a one-off bonus vignette for an origin that already has an authored EventDeck, so a
+     * run gets a unique flavor detour instead of the exact same sandbox pool every time.
+     *
+     * Prefers the pre-generated, curated cache bundled with the app (spice_events.json, built by
+     * tools/generate_spice_cache.py) - this costs nothing at play time and needs no network. Only
+     * falls back to a live Gemini call if that origin/phase/language has no cached entries yet
+     * (e.g. before the cache has been generated for a newer origin). Returns null (never throws)
+     * if neither source has anything usable - callers fall back to the authored deck content.
      */
     suspend fun getSpiceEvent(worldState: WorldState): EventResponse? {
+        val phase = EventDeck.phaseForTurn(worldState.turnCount)
+        val cached = spiceEventCache.pick(worldState.activeOrigin, phase, worldState.selectedLanguage)
+        if (cached != null) return cached
+
         return try {
             geminiApiService.generateSpiceEvent(worldState)
         } catch (e: Exception) {
